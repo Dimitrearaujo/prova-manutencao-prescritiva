@@ -171,15 +171,41 @@ não no fio da navalha: a menor aderência coberta é 2,14 e a maior rejeitada �
 
 ## Avaliação
 
-Ver [`docs/RESULTADOS.md`](docs/RESULTADOS.md) para os números completos e a
-leitura de cada experimento.
+**O ponto metodológico central: uma partição aleatória é inválida neste conjunto
+de dados.** O ensaio gravou um defeito de cada vez, em blocos contínuos de tempo,
+com leituras a segundos de distância. Sortear treino e teste coloca a mesma
+medição dos dois lados da partição — o vizinho mais próximo de um evento de teste
+vira um evento gravado dois segundos antes, já no treino com o rótulo certo.
+Todas as partições usadas respeitam o tempo, e a aleatória aparece só como
+contraste.
 
-O ponto metodológico central: **um split aleatório é inválido neste conjunto de
-dados.** O ensaio gravou um defeito de cada vez, em blocos contínuos de tempo, com
-leituras a segundos de distância. Sortear treino e teste coloca a mesma medição
-dos dois lados da partição. Todas as partições usadas respeitam o tempo, e o
-split aleatório aparece apenas como contraste — para mostrar o tamanho da ilusão
-que produz.
+| Partição | Acerto de procedimento | Acerto de rótulo | Rejeição |
+|---|---|---|---|
+| Aleatória — inválida, só contraste | 95,9% | 91,8% | 18,8% |
+| **Temporal — a medida principal** | **73,1%** | 48,5% | 31,8% |
+| Nova campanha — estresse | 51,1% | 26,4% | 40,3% |
+
+A diferença entre 95,9% e 73,1% é o tamanho do vazamento. E os dois níveis de
+medida existem porque os quatro defeitos de rolamento levam ao mesmo documento e
+à mesma ação corretiva: trocar anel interno por anel externo não muda uma linha
+da instrução entregue ao técnico. O acerto de procedimento mede o produto; o
+acerto de rótulo é detalhe de nomenclatura.
+
+**A queda na nova campanha é deriva medida, não ruído.** A linha de base se
+deslocou entre coletas — a própria condição `normal` tem aceleração RMS 25% maior
+na segunda campanha. Isso não é só um número ruim: é a justificativa concreta
+para o monitoramento de deriva pela taxa de rejeição, descrito na arquitetura.
+
+**O teste que separa esta solução de um classificador fechado** remove uma classe
+inteira do índice e pergunta por ela. Média de 43,6% rejeitados corretamente, e
+68,2% de desfecho útil somando os casos em que o sistema erra o nome mas ainda
+acerta o procedimento. O resultado se separa por família: tirando
+`rolamento_combination` o sistema cai em `rolamento_inner`, que leva ao mesmo
+Doc1 — 97,3% de desfecho útil. Já `correia`, que não tem par no histórico, cai
+para 36,3%.
+
+Números completos, matrizes de confusão e as limitações do que foi medido em
+[`docs/RESULTADOS.md`](docs/RESULTADOS.md).
 
 ---
 

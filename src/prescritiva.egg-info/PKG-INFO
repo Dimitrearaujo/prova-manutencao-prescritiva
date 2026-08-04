@@ -1,5 +1,0 @@
-Metadata-Version: 2.4
-Name: prescritiva
-Version: 0.1.0
-Summary: Pipeline de Manutencao Prescritiva por similaridade historica e recuperacao documental
-Requires-Python: >=3.11
