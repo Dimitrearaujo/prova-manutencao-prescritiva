@@ -306,19 +306,46 @@ def tela_avaliacao() -> None:
     )
     st.dataframe(tabela, use_container_width=True, hide_index=True)
 
-    st.markdown("#### Defeito inedito: a classe some do indice e e consultada")
+    st.markdown("#### Defeito inédito: a classe some do índice e é consultada")
     st.caption(
-        "Mede a unica coisa que separa esta solucao de um classificador fechado: dizer "
-        "'nao reconheco' em vez de escolher o rotulo menos errado."
+        "Um classificador fechado não tem saída aqui — devolve, com confiança, a classe "
+        "conhecida menos errada. Aqui há duas saídas aceitáveis: rejeitar, ou errar o nome "
+        "mas ainda acertar o procedimento."
     )
     inedito = pd.DataFrame(avaliacao["defeito_inedito"])
+    if "desfecho_util" not in inedito.columns:
+        st.info("Rode `python scripts/evaluate.py` novamente para gerar a métrica de desfecho útil.")
+        st.dataframe(inedito, use_container_width=True, hide_index=True)
+        return
+
+    longo = inedito.assign(
+        rejeitou=inedito["rejeitado_corretamente"],
+        salvou=inedito["desfecho_util"] - inedito["rejeitado_corretamente"],
+    ).melt(
+        id_vars="defeito_removido",
+        value_vars=["rejeitou", "salvou"],
+        var_name="desfecho",
+        value_name="fracao",
+    )
     st.plotly_chart(
         px.bar(
-            inedito.sort_values("rejeitado_corretamente"),
-            x="rejeitado_corretamente", y="defeito_removido", orientation="h",
-            title="Taxa de rejeicao correta por defeito removido",
-        ),
+            longo, x="fracao", y="defeito_removido", color="desfecho", orientation="h",
+            title="Desfecho útil: rejeitou corretamente, ou acertou o procedimento mesmo errando o nome",
+            color_discrete_map={"rejeitou": "#1B6E3C", "salvou": "#7A9CC6"},
+            category_orders={
+                "defeito_removido": list(
+                    inedito.sort_values("desfecho_util")["defeito_removido"]
+                )
+            },
+        ).update_layout(height=440, xaxis_tickformat=".0%"),
         use_container_width=True,
+    )
+    st.markdown(
+        "O resultado se separa por família de componente. Removido `rolamento_combination`, "
+        "o sistema cai em `rolamento_inner` — outro rolamento, mesmo Doc1, mesma ação: o nome "
+        "está errado e a prescrição está certa. Já `correia` e `ventoinha` não têm par no "
+        "histórico, e removidas caem em defeito de outro componente. **O pior caso é `polia`, "
+        "que cai em `normal`** — chamar defeito de condição normal não gera nem ação nem alerta."
     )
     st.dataframe(inedito, use_container_width=True, hide_index=True)
 
