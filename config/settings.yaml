@@ -1,0 +1,46 @@
+﻿paths:
+  raw_csv: data/raw/banner.csv
+  docs_dir: data/docs
+  processed_dir: data/processed
+  index_dir: data/index
+  knowledge_dir: data/knowledge
+  database: data/prescritiva.db
+
+ingest:
+  # Rotulos como "cocked_rotor_2" sao campanhas de coleta do mesmo defeito.
+  # A hipotese e validada em notebooks/01_eda.ipynb antes de ser aplicada.
+  campaign_suffix_pattern: '_(\d+)$'
+  # Estados de operacao que o enunciado define como "nao sao problemas".
+  operational_states:
+    - normal
+    - baseline
+    - teste
+    - acelerando
+    - motor_desligado
+
+similarity:
+  n_neighbors: 25
+  # Vibracao escala com a rotacao: so comparamos eventos do mesmo regime.
+  # O ensaio operou em 0, 500, 1000 e 2000 rpm, entao o pareamento e exato.
+  # Acima deste percentil da distancia observada em validacao, o evento e
+  # tratado como padrao nao reconhecido em vez de receber um palpite.
+  reject_distance_percentile: 99.0
+  min_consensus: 0.45
+
+knowledge:
+  ocr_dpi: 300
+  ocr_min_confidence: 0.5
+  chunk_chars: 900
+  chunk_overlap: 150
+  # Escopo = titulo + objetivo. A cobertura documental e decidida contra o
+  # escopo, nunca contra o corpo, para nao casar mencao solta de um termo.
+  scope_chars: 700
+  coverage_min_score: 1.0
+  retrieval_top_k: 4
+
+llm:
+  provider: ollama
+  model: qwen2.5:3b
+  base_url: http://localhost:11434
+  temperature: 0.1
+  timeout_s: 180

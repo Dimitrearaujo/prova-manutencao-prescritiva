@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Dados brutos e artefatos derivados nao entram no repositorio.
+# Reproduza com: python -m scripts.01_ingest && python -m scripts.02_build_index
+data/raw/
+data/processed/
+data/index/
+data/_doc1_pages/
+data/knowledge/
+*.db
+*.parquet
+*.joblib
+
+.env

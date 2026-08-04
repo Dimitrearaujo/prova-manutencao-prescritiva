@@ -1,0 +1,88 @@
+# Catalogo de defeitos.
+#
+# Este arquivo declara COMO procurar cada defeito na base documental, nunca
+# QUAL documento o atende. A associacao defeito -> documento e descoberta em
+# tempo de execucao, para que um documento novo enviado pelo usuario passe a dar
+# cobertura sem alterar codigo.
+#
+# termo_chave  exigencia. Todos os radicais precisam estar no escopo do
+#              documento (titulo + objetivo), senao o documento nem disputa.
+#              E o que impede uma mencao solta de virar cobertura: o
+#              procedimento de rolamentos cita "ventiladores" na lista de
+#              equipamentos, e sem essa regra uma falha de ventoinha pareceria
+#              documentada.
+# termos_busca contexto. Desempata entre procedimentos que citam o mesmo
+#              componente e alimenta a recuperacao de trechos.
+#
+# tests/test_cobertura.py fixa o resultado esperado desta descoberta.
+
+faults:
+  rolamento_inner:
+    rotulo: Rolamento - anel interno
+    componente: rolamento
+    termo_chave: rolamento
+    termos_busca: rolamento anel interno inner race mancal lubrificacao
+  rolamento_outer:
+    rotulo: Rolamento - anel externo
+    componente: rolamento
+    termo_chave: rolamento
+    termos_busca: rolamento anel externo outer race mancal lubrificacao
+  rolamento_ball:
+    rotulo: Rolamento - elemento rolante
+    componente: rolamento
+    termo_chave: rolamento
+    termos_busca: rolamento elemento rolante esfera ball mancal
+  rolamento_combination:
+    rotulo: Rolamento - falha combinada
+    componente: rolamento
+    termo_chave: rolamento
+    termos_busca: rolamento falha combinada multiplos componentes mancal
+  desalinhado:
+    rotulo: Desalinhamento de eixo
+    componente: acoplamento
+    termo_chave: desalinhamento
+    termos_busca: desalinhamento eixo motor acoplamento paralelo angular
+  desbalanceado_1parafuso:
+    rotulo: Desbalanceamento de rotor
+    componente: rotor
+    termo_chave: desbalanceamento
+    termos_busca: desbalanceamento massa rotor forca centrifuga balanceamento
+  correia:
+    rotulo: Falha em correia
+    componente: transmissao
+    termo_chave: correia
+    termos_busca: correia transmissao tensao frouxa desgaste escorregamento
+  polia:
+    rotulo: Falha em polia
+    componente: transmissao
+    termo_chave: polia
+    termos_busca: polia canal desgaste montagem transmissao
+  cocked_rotor:
+    rotulo: Rotor inclinado (cocked rotor)
+    componente: rotor
+    termo_chave: rotor inclinado
+    termos_busca: rotor inclinado cocked desvio angular montagem
+  eccentric_rotor:
+    rotulo: Rotor excentrico
+    componente: rotor
+    termo_chave: rotor excentrico
+    termos_busca: rotor excentrico excentricidade entreferro
+  ventoinha:
+    rotulo: Falha em ventoinha
+    componente: ventilacao
+    termo_chave: ventoinha
+    termos_busca: ventoinha pas helice sujeira desbalanceamento
+
+# Estados de operacao. O enunciado e explicito: nao sao problemas e a solucao
+# nao deve prescrever acao corretiva para eles.
+estados_operacionais:
+  normal:
+    rotulo: Operacao normal
+  baseline:
+    rotulo: Linha de base
+  teste:
+    rotulo: Teste
+  acelerando:
+    rotulo: Aceleracao (regime transitorio)
+  motor_desligado:
+    rotulo: Motor desligado
