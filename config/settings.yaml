@@ -1,4 +1,4 @@
-﻿paths:
+paths:
   raw_csv: data/raw/banner.csv
   docs_dir: data/docs
   processed_dir: data/processed

@@ -1,4 +1,4 @@
-﻿"""Busca por similaridade no historico operacional.
+"""Busca por similaridade no historico operacional.
 
 O enunciado e explicito: a solucao nao deve depender de classificacao previa de
 falhas conhecidas, e sim identificar padroes semelhantes dentro do historico.

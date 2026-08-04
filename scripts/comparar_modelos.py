@@ -16,12 +16,37 @@ import time
 import pandas as pd
 
 from prescritiva.config import load_settings
-from prescritiva.diagnosis.engine import INSTRUCAO, MotorDiagnostico, _montar_pergunta
+from prescritiva.diagnosis.engine import (
+    INSTRUCAO,
+    SECOES_DE_ACAO,
+    MotorDiagnostico,
+    montar_pergunta,
+)
 from prescritiva.diagnosis.historico import estatisticas
 from prescritiva.llm.deterministico import GeradorDeterministico
 from prescritiva.llm.ollama_client import OllamaGerador
 
 DEFEITO_DEMO = "desalinhado"
+
+
+def _primeiro_caso_prescrito(motor: MotorDiagnostico, eventos: pd.DataFrame, tentativas: int = 25):
+    """Procura um evento que chegue ate a prescricao.
+
+    Nem todo evento chega: cerca de um em cada tres e recusado pela regra de
+    rejeicao, e esse e o comportamento desejado. Para comparar geradores de
+    texto precisamos de um caso que passe pelos tres portoes.
+    """
+    amostra = eventos[eventos["fault"] == DEFEITO_DEMO].sample(
+        n=min(tentativas, (eventos["fault"] == DEFEITO_DEMO).sum()), random_state=7
+    )
+    for posicao in range(len(amostra)):
+        linha = amostra.iloc[posicao].to_dict()
+        linha.pop("fault", None)
+        linha.pop("fault_original", None)
+        diagnostico = motor.diagnosticar(linha)
+        if diagnostico.situacao == "defeito_documentado":
+            return diagnostico
+    return None
 
 
 def main() -> None:
@@ -30,21 +55,18 @@ def main() -> None:
     motor = MotorDiagnostico.carregar()
 
     eventos = pd.read_parquet(settings.paths.processed_dir / "eventos.parquet")
-    linha = eventos[eventos["fault"] == DEFEITO_DEMO].sample(1, random_state=7).iloc[0].to_dict()
-    linha.pop("fault", None)
-    linha.pop("fault_original", None)
-
-    diagnostico = motor.diagnosticar(linha)
+    diagnostico = _primeiro_caso_prescrito(motor, eventos)
+    if diagnostico is None:
+        print(f"nenhuma amostra de {DEFEITO_DEMO} chegou a prescricao; nada a comparar")
+        return
     entrada = motor.catalogo[diagnostico.fault]
     trechos = motor.base.buscar(
         f"{entrada['rotulo']} {entrada['termos_busca']}",
         top_k=settings.knowledge["retrieval_top_k"],
         documento=diagnostico.cobertura["documento"],
-        preferir_secoes=__import__(
-            "prescritiva.diagnosis.engine", fromlist=["SECOES_DE_ACAO"]
-        ).SECOES_DE_ACAO,
+        preferir_secoes=SECOES_DE_ACAO,
     )
-    pergunta = _montar_pergunta(
+    pergunta = montar_pergunta(
         entrada["rotulo"], estatisticas(settings.paths.database, diagnostico.fault), trechos
     )
 

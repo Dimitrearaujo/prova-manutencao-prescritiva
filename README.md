@@ -98,10 +98,20 @@ externo:
 ollama pull qwen2.5:3b
 ```
 
+Para comparar modelos no mesmo caso real, com tempo medido na máquina onde vai
+rodar:
+
+```bash
+python scripts/comparar_modelos.py qwen2.5:3b llama3.2:3b
+```
+
 **Sem o Ollama a solução continua funcionando por inteiro.** A camada de geração é
 plugável e cai automaticamente num gerador determinístico, que monta a resposta
 recortando os trechos recuperados do procedimento. Perde-se a redação fluida;
-não se perde diagnóstico, histórico, cobertura nem instrução correta.
+não se perde diagnóstico, histórico, cobertura nem instrução correta. O
+determinístico também serve de linha de base: como só reproduz texto já aprovado
+pela engenharia, ele não tem como alucinar, e é contra ele que o modelo precisa
+provar que vale a pena.
 
 ---
 

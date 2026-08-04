@@ -197,7 +197,7 @@ class MotorDiagnostico:
             documento=cobertura.documento,
             preferir_secoes=SECOES_DE_ACAO,
         )
-        instrucoes = self.gerador.gerar(INSTRUCAO, _montar_pergunta(rotulo, estatistica, trechos))
+        instrucoes = self.gerador.gerar(INSTRUCAO, montar_pergunta(rotulo, estatistica, trechos))
 
         return Diagnostico(
             situacao="defeito_documentado",
@@ -267,7 +267,7 @@ def _frase_historico(estatistica: EstatisticaHistorica) -> str:
     )
 
 
-def _montar_pergunta(
+def montar_pergunta(
     rotulo: str, estatistica: EstatisticaHistorica, trechos: list[TrechoRecuperado]
 ) -> str:
     contexto = "\n---\n".join(f"({t.documento} / {t.secao})\n{t.texto}" for t in trechos)

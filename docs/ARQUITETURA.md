@@ -161,6 +161,18 @@ aprovado pela engenharia, **não tem como alucinar**.
 
 A seleção é automática: se o Ollama não responder, o determinístico assume.
 
+Medido com `scripts/comparar_modelos.py` numa máquina **sem GPU utilizável**
+(i5-3330 de 2012, 16 GB, GPU AMD que o Ollama não acelera): `qwen2.5:3b` responde
+em **17,2 s** para uma prescrição completa de 136 palavras, a 7,9 palavras/s. É
+lento para o gosto de quem está acostumado a serviço em nuvem e perfeitamente
+utilizável para manutenção industrial, onde o evento chega e a ordem de serviço
+sai depois. Na estação-alvo do enunciado, com GPU de 16 GB, o mesmo código roda
+um modelo de 7B a 14B com folga e latência bem menor.
+
+O teto de tokens (`num_predict`) existe por causa desse regime: sem GPU cada
+token custa tempo real, e uma resposta que divaga vira minutos de espera para o
+técnico. Limitar o tamanho é limitar a latência.
+
 ### 3.8 Contenção de alucinação
 
 Quatro camadas, da mais forte para a mais fraca:
@@ -175,6 +187,17 @@ Quatro camadas, da mais forte para a mais fraca:
    não esteja no texto, e manda declarar a lacuna quando ela existir.
 
 Toda resposta vem com os trechos que a originaram, para conferência.
+
+O comportamento aparece na saída real. Num caso de desalinhamento em que os
+trechos recuperados descrevem o desalinhamento combinado mas não trazem passos
+específicos para ele, o modelo escreveu:
+
+> *"Não há especificação direta sobre como tratar desalinhamento combinado, então
+> seguiremos os passos gerais."*
+
+Declarou a lacuna e usou o que o procedimento de fato sustenta, em vez de
+preencher o vazio com passos plausíveis. Reproduzível com
+`python scripts/comparar_modelos.py qwen2.5:3b`.
 
 ## 4. Implantação em ambiente industrial
 
