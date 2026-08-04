@@ -97,10 +97,21 @@ class MotorDiagnostico:
             top_k=settings.knowledge["retrieval_top_k"],
         )
 
-    def diagnosticar(self, evento: VibrationEvent | dict[str, Any]) -> Diagnostico:
+    def diagnosticar(
+        self, evento: VibrationEvent | dict[str, Any], *, ignorar_proprio_id: bool = True
+    ) -> Diagnostico:
+        """Diagnostica um evento.
+
+        `ignorar_proprio_id` importa ao demonstrar com um registro tirado do
+        proprio historico: sem ele o vizinho mais proximo e o proprio evento, a
+        distancia zero, e o resultado parece bom por um motivo que nao existe em
+        producao. Um evento novo de verdade nao tem id conhecido e o parametro
+        nao faz diferenca.
+        """
         validado = evento if isinstance(evento, VibrationEvent) else VibrationEvent(**evento)
         quadro = _para_dataframe(validado)
-        similaridade = self.indice.consultar(quadro)
+        excluir = {validado.id} if ignorar_proprio_id and validado.id is not None else None
+        similaridade = self.indice.consultar(quadro, excluir_ids=excluir)
 
         if not similaridade.reconhecido:
             return self._padrao_desconhecido(similaridade)
@@ -217,6 +228,7 @@ class MotorDiagnostico:
 def _para_dataframe(evento: VibrationEvent) -> pd.DataFrame:
     dados = evento.model_dump()
     dados.pop("fault", None)
+    dados.pop("id", None)
     for coluna in UNIT_DUPLICATES:
         dados.pop(coluna, None)
     quadro = pd.DataFrame([dados])
@@ -238,11 +250,11 @@ def _resumo_similaridade(similaridade: ResultadoSimilaridade) -> dict[str, Any]:
 def _frase_historico(estatistica: EstatisticaHistorica) -> str:
     if not estatistica.ocorrencias:
         return "nenhum registro anterior no historico"
+    total = f"{estatistica.ocorrencias:,}".replace(",", ".")
     return (
-        f"{estatistica.ocorrencias:,} ocorrencias registradas entre "
-        f"{(estatistica.primeira or '')[:10]} e {(estatistica.ultima or '')[:10]}, "
-        f"media de {estatistica.ocorrencias_por_dia:.0f} por dia"
-    ).replace(",", ".")
+        f"{total} ocorrencias registradas entre {(estatistica.primeira or '')[:10]} e "
+        f"{(estatistica.ultima or '')[:10]}, media de {estatistica.ocorrencias_por_dia:.0f} por dia"
+    )
 
 
 def _montar_pergunta(

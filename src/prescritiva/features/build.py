@@ -29,7 +29,27 @@ DERIVED_COLUMNS: tuple[str, ...] = (
     "kurtosis_media",
 )
 
-FEATURE_COLUMNS: tuple[str, ...] = SENSOR_COLUMNS + DERIVED_COLUMNS
+ALL_COLUMNS: tuple[str, ...] = SENSOR_COLUMNS + DERIVED_COLUMNS
+
+# Colunas calculadas mas mantidas fora do espaco de busca. A analise em
+# scripts/eda.py mostrou que nenhuma delas mede o defeito, e scripts/ablacao_features.py
+# confirmou que remove-las nao piora nada. Continuam sendo calculadas porque a
+# ablacao precisa poder reintroduzi-las para reproduzir a comparacao.
+EXCLUIDAS: tuple[str, ...] = (
+    # 14 valores distintos, 61 Hz em 61% das linhas, inclusive com o motor
+    # parado. E a frequencia da rede eletrica, nao uma medicao de vibracao.
+    "z_peak_vel_comp_freq_hz",
+    "x_peak_vel_comp_freq_hz",
+    # Derivadas da coluna acima: se a origem e artefato, a razao tambem e.
+    "ordem_z",
+    "ordem_x",
+    # Correlaciona 0.50 a 0.93 com a posicao no bloco de gravacao, subindo em
+    # uns e caindo em outros: e aquecimento ambiente. E separa os defeitos pior
+    # do que varia dentro de cada um.
+    "temperature_c",
+)
+
+FEATURE_COLUMNS: tuple[str, ...] = tuple(c for c in ALL_COLUMNS if c not in EXCLUIDAS)
 
 
 def build_features(df: pd.DataFrame, colunas: tuple[str, ...] | None = None) -> pd.DataFrame:
@@ -50,5 +70,5 @@ def build_features(df: pd.DataFrame, colunas: tuple[str, ...] | None = None) -> 
     parado = df["rpm"] <= 0
     out.loc[parado, ["ordem_z", "ordem_x"]] = 0.0
 
-    selecionadas = list(colunas or FEATURE_COLUMNS)
+    selecionadas = list(colunas if colunas is not None else FEATURE_COLUMNS)
     return out[selecionadas].replace([np.inf, -np.inf], np.nan).fillna(0.0)
