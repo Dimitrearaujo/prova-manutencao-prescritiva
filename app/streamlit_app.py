@@ -120,11 +120,15 @@ def tela_dados(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
     tabela = pd.DataFrame(linhas)
     sem = tabela[tabela["Coberto"] == "NAO"]
     if not sem.empty:
+        # O separador de milhar e trocado so no numero. Aplicar o replace na
+        # frase inteira comeria a virgula do texto, porque literais adjacentes
+        # viram uma string so antes de o metodo ser chamado.
+        registros = f"{sem['Registros'].sum():,}".replace(",", ".")
+        fatia = f"{sem['Registros'].sum() / len(eventos):.1%}".replace(".", ",")
         st.warning(
-            f"{len(sem)} defeitos sem procedimento cadastrado, somando "
-            f"{sem['Registros'].sum():,} registros ".replace(",", ".")
-            + f"({sem['Registros'].sum() / len(eventos):.1%} do historico). "
-            "Para eles o sistema informa a lacuna e pede o cadastro, em vez de improvisar instrucao."
+            f"{len(sem)} defeitos sem procedimento cadastrado, somando {registros} registros "
+            f"({fatia} do histórico). Para eles o sistema informa a lacuna e pede o cadastro, "
+            "em vez de improvisar instrução."
         )
     st.dataframe(tabela, use_container_width=True, hide_index=True)
 
