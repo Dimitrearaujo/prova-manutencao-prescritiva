@@ -42,5 +42,12 @@ llm:
   provider: ollama
   model: qwen2.5:3b
   base_url: http://localhost:11434
+  # Temperatura baixa: a tarefa e reescrever procedimento, nao criar.
   temperature: 0.1
-  timeout_s: 180
+  # Teto de tokens limita a latencia. Sem GPU cada token custa tempo real, e uma
+  # resposta que divaga vira minutos de espera para o tecnico.
+  max_tokens: 600
+  num_ctx: 4096
+  # Folgado de proposito: a primeira chamada carrega o modelo do disco e pode
+  # levar mais de um minuto em maquina sem GPU.
+  timeout_s: 300

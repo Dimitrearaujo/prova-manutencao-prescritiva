@@ -15,12 +15,16 @@ class OllamaGerador:
         modelo: str,
         base_url: str = "http://localhost:11434",
         temperatura: float = 0.1,
-        timeout_s: int = 180,
+        timeout_s: int = 300,
+        max_tokens: int = 600,
+        contexto: int = 4096,
     ) -> None:
         self.modelo = modelo
         self.base_url = base_url.rstrip("/")
         self.temperatura = temperatura
         self.timeout_s = timeout_s
+        self.max_tokens = max_tokens
+        self.contexto = contexto
         self.nome = f"ollama:{modelo}"
 
     def disponivel(self) -> bool:
@@ -38,7 +42,14 @@ class OllamaGerador:
             json={
                 "model": self.modelo,
                 "stream": False,
-                "options": {"temperature": self.temperatura},
+                "options": {
+                    "temperature": self.temperatura,
+                    # Teto de tokens: numa estacao sem GPU cada token custa tempo
+                    # real, e uma resposta que divaga vira minutos de espera para
+                    # o tecnico. Limitar o tamanho e limitar a latencia.
+                    "num_predict": self.max_tokens,
+                    "num_ctx": self.contexto,
+                },
                 "messages": [
                     {"role": "system", "content": instrucao},
                     {"role": "user", "content": pergunta},

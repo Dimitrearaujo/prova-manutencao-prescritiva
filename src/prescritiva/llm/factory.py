@@ -12,7 +12,9 @@ def construir_gerador(cfg: dict) -> GeradorTexto:
             modelo=cfg["model"],
             base_url=cfg.get("base_url", "http://localhost:11434"),
             temperatura=cfg.get("temperature", 0.1),
-            timeout_s=cfg.get("timeout_s", 180),
+            timeout_s=cfg.get("timeout_s", 300),
+            max_tokens=cfg.get("max_tokens", 600),
+            contexto=cfg.get("num_ctx", 4096),
         )
         if gerador.disponivel():
             return gerador
