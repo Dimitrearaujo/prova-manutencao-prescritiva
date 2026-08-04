@@ -26,6 +26,9 @@ from prescritiva.knowledge.extract import ExtractedDocument
 from prescritiva.text import stems, tokenize
 
 
+_PESO_SECAO_PREFERIDA = 1.8
+
+
 @dataclass
 class DocumentoIndexado:
     nome: str
@@ -97,12 +100,28 @@ class BaseConhecimento:
         # documento de rolamentos. Por isso a cobertura usa regra propria.
         self._bm25_trechos = BM25Okapi([tokenize(t.texto) for t in self.trechos])
 
-    def buscar(self, consulta: str, *, top_k: int = 4, documento: str | None = None) -> list[TrechoRecuperado]:
+    def buscar(
+        self,
+        consulta: str,
+        *,
+        top_k: int = 4,
+        documento: str | None = None,
+        preferir_secoes: str | None = None,
+    ) -> list[TrechoRecuperado]:
+        """Recupera trechos por BM25.
+
+        `preferir_secoes` inclina o resultado para as secoes que ensinam a agir.
+        Perguntar "como corrigir desalinhamento angular" casa fortissimo com a
+        secao que DEFINE desalinhamento angular, porque e onde os termos se
+        repetem, e a secao que ensina a corrigir fica de fora. Para prescrever,
+        a definicao nao serve: o tecnico precisa dos passos.
+        """
         if not self._bm25_trechos or not self.trechos:
             return []
         scores = self._bm25_trechos.get_scores(tokenize(consulta))
+        preferidos = stems(preferir_secoes) if preferir_secoes else set()
         candidatos = [
-            (score, trecho)
+            (score * (_PESO_SECAO_PREFERIDA if preferidos & stems(trecho.secao) else 1.0), trecho)
             for score, trecho in zip(scores, self.trechos, strict=True)
             if documento is None or trecho.documento == documento
         ]

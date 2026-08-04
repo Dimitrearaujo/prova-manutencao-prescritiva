@@ -13,6 +13,12 @@ from dataclasses import dataclass
 
 _CABECALHO = re.compile(r"^\d+(?:\.\d+)*\.?\s+\S")
 
+# Passos numerados dentro de um procedimento tem a mesma forma de um titulo de
+# secao ("3. Trocar lubrificante."), mas terminam em pontuacao. O titulo real
+# nao termina. Sem esta distincao, cada passo abriria uma secao de uma linha e o
+# trecho recuperado chegaria ao leitor sem o contexto do procedimento.
+_FIM_DE_FRASE = (".", ";", ":", ",")
+
 
 @dataclass
 class Trecho:
@@ -33,7 +39,7 @@ def _secoes(texto: str) -> list[tuple[str, str]]:
 
     for linha in texto.splitlines():
         limpa = linha.strip()
-        if _CABECALHO.match(limpa) and len(limpa) < 90:
+        if _CABECALHO.match(limpa) and len(limpa) < 90 and not limpa.endswith(_FIM_DE_FRASE):
             if linhas_atuais:
                 resultado.append((secao_atual, "\n".join(linhas_atuais).strip()))
             secao_atual = limpa

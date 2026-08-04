@@ -101,12 +101,23 @@ def experimento_defeito_inedito(eventos: pd.DataFrame, cfg: dict) -> pd.DataFram
         teste = amostrar(eventos[eventos["fault"] == alvo], AMOSTRA_INEDITO)
         resultado = _rodar(treino, teste, cfg, amostra_calibracao=600)
         reconhecidos = resultado[resultado["reconhecido"]]
+        # Quando nao rejeita, o rotulo escolhido ainda leva ao mesmo procedimento?
+        # Remover rolamento_ball e receber rolamento_inner no lugar mantem o Doc1
+        # e a mesma acao corretiva: para o tecnico, a prescricao continua certa.
+        salvos = (
+            float((reconhecidos["proc_verdadeiro"] == reconhecidos["proc_previsto"]).mean())
+            if len(reconhecidos)
+            else 0.0
+        )
+        rejeitado = float((~resultado["reconhecido"]).mean())
         linhas.append(
             {
                 "defeito_removido": alvo,
                 "eventos": len(resultado),
-                "rejeitado_corretamente": float((~resultado["reconhecido"]).mean()),
-                "rotulo_errado_mais_dado": reconhecidos["previsto"].value_counts().idxmax()
+                "rejeitado_corretamente": rejeitado,
+                "procedimento_ainda_correto": salvos,
+                "desfecho_util": rejeitado + (1 - rejeitado) * salvos,
+                "rotulo_mais_dado": reconhecidos["previsto"].value_counts().idxmax()
                 if len(reconhecidos)
                 else "-",
             }
@@ -153,6 +164,8 @@ def main() -> None:
     inedito = experimento_defeito_inedito(eventos, cfg)
     print(inedito.to_string(index=False))
     print(f"\n  rejeicao media: {inedito['rejeitado_corretamente'].mean():.1%}")
+    print(f"  desfecho util medio (rejeitou OU acertou o procedimento): "
+          f"{inedito['desfecho_util'].mean():.1%}")
 
     destino = settings.paths.index_dir / "avaliacao.json"
     destino.parent.mkdir(parents=True, exist_ok=True)

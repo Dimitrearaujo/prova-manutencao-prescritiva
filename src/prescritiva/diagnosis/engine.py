@@ -32,6 +32,15 @@ from prescritiva.llm.base import GeradorTexto
 from prescritiva.llm.factory import construir_gerador
 from prescritiva.similarity.index import IndiceSimilaridade, ResultadoSimilaridade
 
+# Titulos de secao que indicam acao, e nao definicao. Os seis procedimentos
+# seguem a mesma estrutura: primeiro conceituam o defeito, depois ensinam a
+# corrigir. Para prescrever, a segunda metade e que interessa.
+SECOES_DE_ACAO = (
+    "procedimento correcao execucao etapas passos ferramentas instrumentos "
+    "verificacao inspecao ajuste alinhamento montagem validacao manutencao "
+    "acoes recomendacoes boas praticas criterios aceitacao"
+)
+
 INSTRUCAO = """Voce e um assistente de manutencao industrial. Sua unica fonte e o
 PROCEDIMENTO fornecido no contexto.
 
@@ -183,9 +192,10 @@ class MotorDiagnostico:
             )
 
         trechos = self.base.buscar(
-            f"{rotulo} {entrada['termos_busca']} correcao procedimento",
+            f"{rotulo} {entrada['termos_busca']}",
             top_k=self.top_k,
             documento=cobertura.documento,
+            preferir_secoes=SECOES_DE_ACAO,
         )
         instrucoes = self.gerador.gerar(INSTRUCAO, _montar_pergunta(rotulo, estatistica, trechos))
 

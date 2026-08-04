@@ -1,0 +1,16 @@
+pyproject.toml
+src/prescritiva/__init__.py
+src/prescritiva/config.py
+src/prescritiva/text.py
+src/prescritiva.egg-info/PKG-INFO
+src/prescritiva.egg-info/SOURCES.txt
+src/prescritiva.egg-info/dependency_links.txt
+src/prescritiva.egg-info/top_level.txt
+src/prescritiva/api/__init__.py
+src/prescritiva/data/__init__.py
+src/prescritiva/diagnosis/__init__.py
+src/prescritiva/features/__init__.py
+src/prescritiva/knowledge/__init__.py
+src/prescritiva/knowledge/extract.py
+src/prescritiva/llm/__init__.py
+src/prescritiva/similarity/__init__.py
