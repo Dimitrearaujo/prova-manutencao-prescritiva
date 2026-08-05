@@ -455,7 +455,7 @@ carrega. Nenhum treino acontece em produção.
 **Orçamento da estação.** O índice serializado dos 144 mil eventos ocupa **9,7 MB**
 em disco e a base documental, **71 KB** — os dois cabem em memória sem discussão.
 Medido com `docker stats` após um diagnóstico completo ([`DEPLOY.md`](DEPLOY.md)
-§6), a API ocupa 279 MiB e o painel 48 MiB: cerca de 330 MB para a stack inteira.
+§6), a API ocupa 254 MiB e o painel 52 MiB: cerca de 306 MB para a stack inteira.
 O modelo de linguagem é o item dominante por larga margem — um modelo de 7B a 14B
 em quantização de 4 bits ocupa 5–9 GB de VRAM, dentro dos 16 GB. Ou seja, dos
 32 GB de RAM da estação, praticamente toda a folga deve ser reservada ao Ollama, e

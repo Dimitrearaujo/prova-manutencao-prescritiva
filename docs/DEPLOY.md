@@ -307,13 +307,18 @@ o ganho de um modelo maior pode não pagar a latência adicional para o técnico
 está esperando na frente do equipamento.
 
 **A RAM não é o gargalo desta solução.** Medido com `docker stats` logo após um
-diagnóstico completo: **279 MiB na API** (com o índice de similaridade e os 170
-trechos carregados) e **48 MiB no painel**. Cerca de 330 MB para a stack inteira.
+diagnóstico completo: **254 MiB na API** (com o índice de similaridade e os 170
+trechos carregados) e **52 MiB no painel**. Cerca de 306 MB para a stack inteira.
 O índice serializado tem ~10 MB e o `NearestNeighbors` do scikit-learn fica
 inteiro em memória, mas 144 mil eventos com o conjunto de features usado são
 poucas dezenas de MB. Ou seja: dos 32 GB da estação, praticamente toda a folga
 deve ser reservada ao Ollama, não aos containers. Se um dia a RAM apertar, o
 suspeito é o modelo, não a aplicação.
+
+Medido em `docker compose up -d --build` no Docker Desktop (WSL2) de
+desenvolvimento — o valor absoluto pode variar alguns MB numa engine Docker
+diferente (Linux nativo na estação industrial, por exemplo), mas a ordem de
+grandeza e a conclusão (a aplicação é irrelevante perto do modelo) não mudam.
 
 **A rede muda de forma.** Em desenvolvimento as portas são publicadas em
 `localhost`. Numa planta, o correto é não expor `8000` e `8501` diretamente:
