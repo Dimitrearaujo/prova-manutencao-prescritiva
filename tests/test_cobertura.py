@@ -11,6 +11,8 @@ enunciado manda tratar informando que o problema ainda nao esta documentado.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from prescritiva.config import load_catalog, load_settings
@@ -74,25 +76,44 @@ def test_limiar_fica_numa_faixa_vazia(base, catalogo):
     assert max(rejeitados) < limiar * 0.8
 
 
-def test_o_acervo_real_nao_discrimina_escopo_de_corpo(base):
+def test_o_acervo_real_nao_discrimina_escopo_de_corpo(base, catalogo):
     """Registra que a regra do escopo NAO corrige nenhum erro neste acervo.
 
-    Os seis procedimentos sao monotematicos e nomeiam o componente no titulo, e
-    nenhum cita no corpo um componente tratado por outro. O unico termo cruzado e
-    "ventilador", no procedimento de rolamentos - e ele nao casa com "ventoinha"
-    porque os radicais diferem (tests/test_text.py verifica).
+    A ARQUITETURA afirma isso, e a afirmacao e verificavel do jeito direto: rodar
+    a MESMA funcao cobertura() com o campo `escopo` trocado pelo texto integral, e
+    comparar os dois mapas. E o que este teste faz.
 
-    Este teste existe porque a documentacao do projeto ja afirmou o contrario, e
-    a afirmacao caia em cinco linhas de codigo. Se um documento novo criar o caso
-    discriminante, este teste falha e obriga a rever a redacao em vez de deixar
-    uma justificativa envelhecer sozinha.
+    A versao anterior conferia por substring se cinco termos apareciam no corpo do
+    Doc1, o que e um proxy fraco em dois sentidos. Olhava um documento so, e - o
+    que importa mais - media uma regra que nao e a do sistema: presenca do termo,
+    sem o peso do titulo nem o limiar. Medido com esse proxy, o acervo parece ter
+    caso discriminante em oito dos nove defeitos cobertos ("rolamento" aparece no
+    corpo dos seis documentos). Medido com a regra de verdade, nenhum defeito
+    troca de documento, porque `2.0 * peso_titulo` domina e mencao no corpo nao
+    vem acompanhada de titulo.
+
+    A licao ficou no teste de proposito: proxy mais fraco que a regra real produz
+    conclusao oposta a da regra real, com toda a aparencia de medicao.
     """
-    corpo_doc1 = normalize(" ".join(t.texto for t in base.trechos if t.documento == "Doc1"))
-    for termo in ("polia", "correia", "acoplamento", "desalinha", "excentric"):
-        assert termo not in corpo_doc1, (
-            f'"{termo}" passou a aparecer no corpo do Doc1: o acervo agora tem caso '
-            "discriminante e a redacao da secao 3.6 da ARQUITETURA precisa ser revista"
-        )
+    corpo = {}
+    for trecho in base.trechos:
+        corpo.setdefault(trecho.documento, []).append(trecho.texto)
+
+    base_corpo = BaseConhecimento(score_minimo_cobertura=base.score_minimo_cobertura)
+    base_corpo.trechos = base.trechos
+    base_corpo.documentos = [replace(d, escopo="\n".join(corpo.get(d.nome, []))) for d in base.documentos]
+
+    divergentes = []
+    for fault, entrada in catalogo.items():
+        args = (entrada["termo_chave"], entrada["termos_busca"], entrada["rotulo"])
+        if base.cobertura(*args).documento != base_corpo.cobertura(*args).documento:
+            divergentes.append(fault)
+
+    assert not divergentes, (
+        f"o acervo passou a ter caso discriminante em {divergentes}: decidir cobertura "
+        "pelo corpo agora mudaria o mapa, e a secao 3.6 da ARQUITETURA - que afirma o "
+        "contrario para ESTE acervo - precisa ser reescrita em vez de envelhecer sozinha"
+    )
 
 
 def test_mencao_no_corpo_nao_concede_cobertura(base):
