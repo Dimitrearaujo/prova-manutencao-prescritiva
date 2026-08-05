@@ -83,10 +83,10 @@ uvicorn prescritiva.api.main:app --reload
 Análise e avaliação:
 
 ```bash
-python scripts/demo.py               # os 4 desfechos em linha de comando
-python scripts/eda.py                # as 5 hipoteses que justificam o tratamento dos dados
-python scripts/evaluate.py           # os 4 experimentos de avaliacao
-python scripts/ablacao_features.py   # o que cada grupo de features contribui
+python scripts/demo.py               # os 4 desfechos em linha de comando (~1 min)
+python scripts/eda.py                # as 5 hipoteses que justificam o tratamento dos dados (~15 s)
+python scripts/evaluate.py           # os 4 experimentos de avaliacao (~25 min - rode antes, nao ao vivo)
+python scripts/ablacao_features.py   # o que cada grupo de features contribui (~20 min - rode antes, nao ao vivo)
 pytest                               # testes
 ```
 
