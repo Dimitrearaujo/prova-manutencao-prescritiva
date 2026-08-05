@@ -145,13 +145,24 @@ recebe os eventos dos sensores. OpenAPI interativo em `/docs`.
 | `GET` | `/cobertura` | mapa defeito → documento como ele está agora |
 
 `POST /documentos` recusa antes de gravar: `400` para nome de arquivo com
-caminho, fora da allowlist ou que não abre como PDF, e `413` acima de 25 MB. A
-validação roda numa área temporária de propósito — um arquivo ruim já gravado em
-`data/docs/` derrubaria toda reindexação seguinte, que é justamente o mecanismo
-de recuperação do desfecho "defeito sem documentação".
+caminho, fora da allowlist, que não abre como PDF ou cujo texto extraído não
+sustenta um procedimento consultável; `413` acima de 25 MB; `401` se
+`cadastro.chave_acesso` estiver configurada e o cabeçalho `X-Prescritiva-Key`
+vier ausente ou errado. A validação roda numa área temporária de propósito —
+um arquivo ruim já gravado em `data/docs/` derrubaria toda reindexação
+seguinte, que é justamente o mecanismo de recuperação do desfecho "defeito sem
+documentação". A chave é opcional e vem desligada por padrão (nenhuma
+instalação nova fica travada de saída); configurada por
+`PRESCRITIVA_CADASTRO_KEY`, ela vale igual para a API e para o cadastro pelo
+painel — reescrever o procedimento que o técnico vai seguir não pode ser ação
+de qualquer um numa planta segmentada, e essa é uma decisão de arquitetura, não
+um extra de segurança avulso. Detalhe completo em
+[`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) §3.10.
 
 O painel Streamlit tem quatro abas — Dados, Diagnóstico, Procedimentos e
-Avaliação — e importa o motor em processo, sem passar pela API.
+Avaliação — e importa o motor em processo, sem passar pela API. O cadastro de
+documento novo mora na aba Procedimentos e passa pelas mesmas proteções do
+`POST /documentos`, incluindo a chave de acesso quando configurada.
 
 ---
 

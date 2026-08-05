@@ -26,7 +26,7 @@ from typing import BinaryIO
 import fitz
 
 from prescritiva.config import Settings
-from prescritiva.knowledge.extract import extract_all
+from prescritiva.knowledge.extract import ExtractedDocument, extract_all, extract_document
 from prescritiva.knowledge.store import BaseConhecimento
 
 LOGGER = logging.getLogger(__name__)
@@ -128,12 +128,68 @@ def _exigir_pdf_legivel(caminho: Path) -> None:
         raise CadastroInvalido("O PDF enviado nao tem paginas.")
 
 
-def cadastrar_documento(arquivo: BinaryIO, filename: str | None, settings: Settings) -> ResultadoCadastro:
+def _exigir_chave_valida(chave_apresentada: str | None, settings: Settings) -> None:
+    """Recusa o cadastro se uma chave estiver configurada e nao bater.
+
+    Sem chave configurada em `settings.cadastro["chave_acesso"]` (ausente, None
+    ou string vazia), o cadastro continua aberto - e o estado de
+    desenvolvimento, e exigir segredo sem ele existir travaria toda instalacao
+    nova antes de alguem configurar uma. Configurada, a chave ausente ou errada
+    recusa com 401: minha arquitetura promete rodar numa planta segmentada,
+    entao reescrever o procedimento que o tecnico vai seguir nao pode ser acao
+    de qualquer um que alcance a porta HTTP ou o painel.
+    """
+    esperada = (settings.cadastro or {}).get("chave_acesso")
+    if not esperada:
+        return
+    if chave_apresentada != esperada:
+        raise CadastroInvalido("Chave de acesso ausente ou invalida.", status_code=401)
+
+
+def _exigir_conteudo_suficiente(
+    extraido: ExtractedDocument, docs_dir: Path, cache_dir: Path, settings: Settings
+) -> None:
+    """Recusa um PDF que abre mas nao rendeu texto o bastante para virar procedimento.
+
+    `_exigir_pdf_legivel` so confere que o arquivo abre e tem paginas - um PDF
+    de paginas em branco, ou escaneado tao mal que o OCR nao le nada, passa por
+    ela sem problema e entraria na base sem nunca poder cobrir defeito nenhum:
+    `cobertura()` compara contra o escopo extraido, e escopo vazio nunca casa
+    com nada. O documento ficaria contado em "documentos: N" e nunca em
+    cobertura - pior que recusar, porque parece cadastrado.
+
+    Mesmo minimo por pagina que decide, em `knowledge/extract.py`, se o
+    documento tem camada de texto nativa util ou precisa de OCR: um PDF que ja
+    nao passa nesse minimo tambem nao teria texto de sobra depois do OCR.
+    """
+    minimo_por_pagina = settings.cadastro.get("min_chars_por_pagina", 40)
+    minimo = minimo_por_pagina * extraido.paginas
+    tamanho = len(extraido.texto.strip())
+    if tamanho >= minimo:
+        return
+    docs_dir.joinpath(extraido.arquivo).unlink(missing_ok=True)
+    cache_dir.joinpath(f"{extraido.nome}.json").unlink(missing_ok=True)
+    raise CadastroInvalido(
+        f"O texto extraido tem {tamanho} caracteres para {extraido.paginas} pagina(s) - "
+        f"abaixo do minimo de {minimo} para sustentar um procedimento consultavel. Confira "
+        "se o PDF nao esta em branco ou escaneado com qualidade baixa demais para o OCR."
+    )
+
+
+def cadastrar_documento(
+    arquivo: BinaryIO,
+    filename: str | None,
+    settings: Settings,
+    *,
+    chave_apresentada: str | None = None,
+) -> ResultadoCadastro:
     """Valida, grava, invalida o cache de extracao e reindexa a base.
 
     E o unico ponto que escreve em docs_dir e reconstroi `BaseConhecimento`.
     Quem chama - API ou painel - so decide o que fazer com o resultado.
     """
+    _exigir_chave_valida(chave_apresentada, settings)
+
     docs_dir = settings.paths.docs_dir
     docs_dir.mkdir(parents=True, exist_ok=True)
     nome = nome_seguro(filename, docs_dir)
@@ -151,15 +207,20 @@ def cadastrar_documento(arquivo: BinaryIO, filename: str | None, settings: Setti
     # o mesmo nome com o conteudo corrigido devolve o texto antigo: o cadastro
     # responde sucesso e o sistema segue prescrevendo pela versao errada, que e
     # o oposto do que este cadastro existe para resolver.
-    (settings.paths.knowledge_dir / f"{Path(nome).stem}.json").unlink(missing_ok=True)
+    cache_dir = settings.paths.knowledge_dir
+    cache_dir.joinpath(f"{Path(nome).stem}.json").unlink(missing_ok=True)
 
     cfg = settings.knowledge
-    extraidos = extract_all(
-        docs_dir,
-        settings.paths.knowledge_dir,
-        dpi=cfg["ocr_dpi"],
-        min_confidence=cfg["ocr_min_confidence"],
+    # Extrai o documento novo sozinho primeiro, e nao dentro do lote: e a unica
+    # chamada que precisa do resultado individual para o portao de conteudo, e
+    # ela ja escreve o cache que o extract_all() do lote reaproveita - sem isto
+    # o documento seria extraido (e o OCR de ~25s/pagina pago) duas vezes.
+    extraido = extract_document(
+        docs_dir / nome, cache_dir, dpi=cfg["ocr_dpi"], min_confidence=cfg["ocr_min_confidence"]
     )
+    _exigir_conteudo_suficiente(extraido, docs_dir, cache_dir, settings)
+
+    extraidos = extract_all(docs_dir, cache_dir, dpi=cfg["ocr_dpi"], min_confidence=cfg["ocr_min_confidence"])
     base = BaseConhecimento(
         tamanho_trecho=cfg["chunk_chars"],
         sobreposicao=cfg["chunk_overlap"],

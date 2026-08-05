@@ -445,6 +445,72 @@ def test_um_pdf_corrompido_no_diretorio_nao_derruba_a_reindexacao(tmp_path):
     assert [e.nome for e in extraidos] == ["Bom"]
 
 
+def test_sem_chave_configurada_upload_continua_aberto(cliente_upload):
+    """Estado de desenvolvimento: cadastro.chave_acesso vem null do settings.yaml real."""
+    testclient, docs = cliente_upload
+
+    resposta = testclient.post(
+        "/documentos", files={"arquivo": ("Aberto.pdf", pdf_valido(), "application/pdf")}
+    )
+
+    assert resposta.status_code == 200
+
+
+def test_chave_configurada_recusa_upload_sem_cabecalho(cliente_upload, monkeypatch):
+    testclient, docs = cliente_upload
+    settings_atual = api.load_settings()
+    monkeypatch.setattr(
+        api,
+        "load_settings",
+        lambda: dataclasses.replace(
+            settings_atual, cadastro={**settings_atual.cadastro, "chave_acesso": "segredo-planta"}
+        ),
+    )
+
+    resposta = testclient.post(
+        "/documentos", files={"arquivo": ("Doc.pdf", pdf_valido(), "application/pdf")}
+    )
+
+    assert resposta.status_code == 401
+    assert list(docs.glob("*.pdf")) == []
+
+
+def test_chave_configurada_aceita_upload_com_cabecalho_certo(cliente_upload, monkeypatch):
+    testclient, docs = cliente_upload
+    settings_atual = api.load_settings()
+    monkeypatch.setattr(
+        api,
+        "load_settings",
+        lambda: dataclasses.replace(
+            settings_atual, cadastro={**settings_atual.cadastro, "chave_acesso": "segredo-planta"}
+        ),
+    )
+
+    resposta = testclient.post(
+        "/documentos",
+        files={"arquivo": ("Doc.pdf", pdf_valido(), "application/pdf")},
+        headers={"X-Prescritiva-Key": "segredo-planta"},
+    )
+
+    assert resposta.status_code == 200
+
+
+def test_pdf_sem_texto_util_e_recusado_pela_api(cliente_upload):
+    """Portao de conteudo (#16), pela mesma porta HTTP que as demais recusas."""
+    testclient, docs = cliente_upload
+    vazio = fitz.open()
+    vazio.new_page()
+    dados = vazio.tobytes()
+    vazio.close()
+
+    resposta = testclient.post(
+        "/documentos", files={"arquivo": ("Vazio.pdf", dados, "application/pdf")}
+    )
+
+    assert resposta.status_code == 400
+    assert list(docs.glob("*.pdf")) == []
+
+
 def test_o_handler_de_upload_nao_roda_no_event_loop():
     """OCR a 25 s por pagina num `async def` deixaria /saude mudo por minutos.
 

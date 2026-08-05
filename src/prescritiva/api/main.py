@@ -11,7 +11,7 @@ import logging
 from dataclasses import asdict
 from typing import Any
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from prescritiva.config import load_catalog, load_settings
@@ -137,7 +137,9 @@ def cobertura(motor: MotorDiagnostico = Depends(obter_motor)) -> list[dict[str, 
 
 @app.post("/documentos")
 def enviar_documento(
-    arquivo: UploadFile = File(...), motor: MotorDiagnostico = Depends(obter_motor)
+    arquivo: UploadFile = File(...),
+    motor: MotorDiagnostico = Depends(obter_motor),
+    x_prescritiva_key: str | None = Header(default=None),
 ) -> dict[str, Any]:
     """Cadastra um procedimento novo e reindexa a base.
 
@@ -147,6 +149,12 @@ def enviar_documento(
     `prescritiva.knowledge.cadastro`, compartilhadas com o painel Streamlit -
     aqui so cabe traduzir `CadastroInvalido` para HTTP.
 
+    `X-Prescritiva-Key` so e exigido se `cadastro.chave_acesso` estiver
+    configurada (`prescritiva.knowledge.cadastro._exigir_chave_valida` decide):
+    minha arquitetura promete rodar numa planta segmentada, entao reescrever o
+    procedimento que o tecnico vai seguir nao pode ser acao de quem quer que
+    alcance esta porta.
+
     Sincrono de proposito. O corpo faz OCR (cerca de 25 s por pagina) e refaz o
     indice BM25; como `async def`, esse trabalho rodaria no event loop e deixaria
     /saude e /diagnosticar mudos por minutos. Sendo `def`, o FastAPI despacha ao
@@ -154,7 +162,9 @@ def enviar_documento(
     """
     settings = load_settings()
     try:
-        resultado = cadastrar_documento(arquivo.file, arquivo.filename, settings)
+        resultado = cadastrar_documento(
+            arquivo.file, arquivo.filename, settings, chave_apresentada=x_prescritiva_key
+        )
     except CadastroInvalido as erro:
         raise HTTPException(status_code=erro.status_code, detail=erro.mensagem) from erro
     motor.base = resultado.base

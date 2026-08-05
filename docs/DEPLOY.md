@@ -247,6 +247,12 @@ versionados e revisáveis; onde o Ollama e o broker atendem muda por máquina e 
 pode obrigar a editar arquivo versionado nem a reconstruir imagem. A lista vive
 em `_SOBRESCRITAS_ENV`, em `src/prescritiva/config.py`.
 
+Uma quarta variável, `PRESCRITIVA_CADASTRO_KEY` (sobrescreve
+`cadastro.chave_acesso`, padrão nenhum = cadastro aberto), entra pelo mesmo
+mecanismo por um motivo diferente: não é endereço de serviço, é segredo da
+instalação — um `settings.yaml` versionado com a chave real a tornaria pública
+no primeiro commit. Detalhe em [`ARQUITETURA.md`](ARQUITETURA.md) §3.10.
+
 O `docker-compose.yml` já define a primeira como
 `http://host.docker.internal:11434`. Esse nome é resolvido automaticamente pelo
 Docker Desktop; a linha `extra_hosts: host.docker.internal:host-gateway` faz o

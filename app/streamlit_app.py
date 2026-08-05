@@ -406,6 +406,16 @@ def tela_chat(motor: MotorDiagnostico) -> None:
     st.subheader("Consulta a base de procedimentos")
 
     with st.expander("Cadastrar novo documento orientativo"):
+        # Mesmo campo que a API exige no cabecalho X-Prescritiva-Key, so aberto
+        # quando cadastro.chave_acesso esta configurada - deixar em branco numa
+        # instalacao sem chave configurada nao recusa nada. Reescrever o
+        # procedimento que o tecnico vai seguir nao pode ser acao de qualquer um
+        # numa planta segmentada, e essa regra vale igual pelo painel e pela API.
+        chave = st.text_input(
+            "Chave de acesso",
+            type="password",
+            help="Deixe em branco se esta instalacao nao exige chave para cadastro.",
+        )
         enviado = st.file_uploader("PDF do procedimento", type="pdf")
         if enviado is not None and st.button("Indexar documento", type="primary"):
             settings = load_settings()
@@ -416,7 +426,9 @@ def tela_chat(motor: MotorDiagnostico) -> None:
             # tem de valer tanto quanto reenviar pela API.
             with st.spinner("Extraindo e reindexando (documento escaneado exige OCR)..."):
                 try:
-                    resultado = cadastrar_documento(enviado, enviado.name, settings)
+                    resultado = cadastrar_documento(
+                        enviado, enviado.name, settings, chave_apresentada=chave or None
+                    )
                 except CadastroInvalido as erro:
                     st.error(erro.mensagem)
                 else:

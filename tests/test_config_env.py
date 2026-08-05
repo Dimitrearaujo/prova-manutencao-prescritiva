@@ -54,3 +54,20 @@ def test_settings_reais_leem_a_variavel(monkeypatch):
     finally:
         # O cache e global: deixa-lo sujo contaminaria os testes seguintes.
         load_settings.cache_clear()
+
+
+def test_chave_de_cadastro_e_sobrescrivel(monkeypatch):
+    """A chave e segredo da instalacao: nao pode viver so no settings.yaml versionado."""
+    bruto = {"cadastro": {"chave_acesso": None}}
+    monkeypatch.setenv("PRESCRITIVA_CADASTRO_KEY", "planta-nova-2026")
+
+    assert _aplicar_sobrescritas_env(bruto)["cadastro"]["chave_acesso"] == "planta-nova-2026"
+
+
+def test_settings_reais_leem_a_chave_de_cadastro(monkeypatch):
+    monkeypatch.setenv("PRESCRITIVA_CADASTRO_KEY", "planta-nova-2026")
+    load_settings.cache_clear()
+    try:
+        assert load_settings().cadastro["chave_acesso"] == "planta-nova-2026"
+    finally:
+        load_settings.cache_clear()

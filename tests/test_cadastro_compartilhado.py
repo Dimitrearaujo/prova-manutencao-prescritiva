@@ -123,3 +123,114 @@ def test_reenviar_o_mesmo_nome_pelo_painel_indexa_o_conteudo_novo(settings_isola
     texto = extraidos[0].texto
     assert "Versao Corrigida" in texto
     assert "Versao Errada" not in texto
+
+
+# --------------------------------------------------------------------------
+# Chave de acesso (#17) - so exige quando settings.cadastro tem chave_acesso
+# --------------------------------------------------------------------------
+
+
+def _com_chave(settings, chave):
+    """Mesmos settings isolados, com `cadastro.chave_acesso` configurada."""
+    return dataclasses.replace(settings, cadastro={**settings.cadastro, "chave_acesso": chave})
+
+
+def test_sem_chave_configurada_cadastro_continua_aberto(settings_isolados):
+    """Estado de desenvolvimento: nenhuma instalacao nova fica travada de saida."""
+    assert not settings_isolados.cadastro.get("chave_acesso")
+
+    resultado = cadastrar_documento(_bytes_io("Doc.pdf", pdf_valido()), "Doc.pdf", settings_isolados)
+
+    assert resultado.nome == "Doc.pdf"
+
+
+def test_chave_configurada_recusa_sem_chave(settings_isolados):
+    settings = _com_chave(settings_isolados, "segredo-planta")
+
+    with pytest.raises(CadastroInvalido) as excinfo:
+        cadastrar_documento(_bytes_io("Doc.pdf", pdf_valido()), "Doc.pdf", settings)
+
+    assert excinfo.value.status_code == 401
+    assert list(settings.paths.docs_dir.glob("*.pdf")) == []
+
+
+def test_chave_configurada_recusa_chave_errada(settings_isolados):
+    settings = _com_chave(settings_isolados, "segredo-planta")
+
+    with pytest.raises(CadastroInvalido) as excinfo:
+        cadastrar_documento(
+            _bytes_io("Doc.pdf", pdf_valido()), "Doc.pdf", settings, chave_apresentada="chave-errada"
+        )
+
+    assert excinfo.value.status_code == 401
+
+
+def test_chave_configurada_aceita_chave_certa(settings_isolados):
+    settings = _com_chave(settings_isolados, "segredo-planta")
+
+    resultado = cadastrar_documento(
+        _bytes_io("Doc.pdf", pdf_valido()), "Doc.pdf", settings, chave_apresentada="segredo-planta"
+    )
+
+    assert resultado.nome == "Doc.pdf"
+
+
+# --------------------------------------------------------------------------
+# Portao de conteudo minimo (#16) - PDF que abre mas nao rendeu texto o
+# bastante para virar procedimento consultavel
+# --------------------------------------------------------------------------
+
+
+def pdf_quase_vazio() -> bytes:
+    """PDF valido, uma pagina, sem texto nenhum - o caso do escaneamento ruim."""
+    documento = fitz.open()
+    documento.new_page()
+    dados = documento.tobytes()
+    documento.close()
+    return dados
+
+
+def test_pdf_sem_conteudo_util_e_recusado_sem_entrar_na_base(settings_isolados):
+    with pytest.raises(CadastroInvalido) as excinfo:
+        cadastrar_documento(
+            _bytes_io("Vazio.pdf", pdf_quase_vazio()), "Vazio.pdf", settings_isolados
+        )
+
+    assert excinfo.value.status_code == 400
+    assert "caracteres" in excinfo.value.mensagem
+    # Nem o PDF nem o cache de extracao podem sobreviver a recusa - senao o
+    # proximo cadastro encontraria um documento fantasma no glob.
+    assert list(settings_isolados.paths.docs_dir.glob("*.pdf")) == []
+    assert list(settings_isolados.paths.knowledge_dir.glob("*.json")) == []
+
+
+def _pdf_com_texto_curto(texto: str) -> bytes:
+    documento = fitz.open()
+    pagina = documento.new_page()
+    pagina.insert_textbox(fitz.Rect(50, 50, 545, 100), texto, fontsize=11, fontname="helv")
+    dados = documento.tobytes()
+    documento.close()
+    return dados
+
+
+def test_limiar_de_conteudo_e_configuravel(settings_isolados):
+    """Mesmo PDF: recusado no limiar padrao, aceito quando o limiar baixa.
+
+    O ponto do teste e que o limiar vem de `settings.cadastro`, nao de um
+    numero fixo no codigo - "Doc curto" tem menos de 40 caracteres (o padrao),
+    mas passa de sobra num limiar de 5.
+    """
+    texto_curto = "Doc curto"  # 9 caracteres, abaixo do minimo padrao (40)
+
+    with pytest.raises(CadastroInvalido):
+        cadastrar_documento(
+            _bytes_io("Curto.pdf", _pdf_com_texto_curto(texto_curto)), "Curto.pdf", settings_isolados
+        )
+
+    settings_permissivo = dataclasses.replace(
+        settings_isolados, cadastro={**settings_isolados.cadastro, "min_chars_por_pagina": 5}
+    )
+    resultado = cadastrar_documento(
+        _bytes_io("Curto.pdf", _pdf_com_texto_curto(texto_curto)), "Curto.pdf", settings_permissivo
+    )
+    assert resultado.nome == "Curto.pdf"

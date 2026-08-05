@@ -403,6 +403,41 @@ engenharia e não tem como acrescentar ferramenta nenhuma. Onde o custo de manda
 um técnico buscar o instrumento errado for alto, é ele que deve rodar — e a troca
 é uma variável de ambiente, porque o motor conhece a interface e não o modelo.
 
+### 3.10 O cadastro de documento tem quatro portões, não três
+
+`nome_seguro`, o teto de tamanho e `_exigir_pdf_legivel` (§3.4 é sobre outro
+assunto, mas o padrão é o mesmo: validar o que pode derrubar o sistema antes de
+deixar entrar) garantem que o que chega em `data/docs/` é **um PDF de verdade**.
+Nenhum dos três garante que ele tem **conteúdo** de procedimento. Um PDF de
+página em branco, ou um escaneamento tão ruim que o OCR não lê nada, passa
+pelos três e entraria na base sem nunca poder cobrir defeito nenhum —
+`cobertura()` compara contra o escopo extraído, e escopo vazio não casa com
+nada. Esse documento apareceria em `documentos: N` e nunca em cobertura, o que
+é pior que recusar: parece cadastrado.
+
+**O quarto portão exige um mínimo de caracteres extraídos por página**, o
+mesmo limiar (`min_chars_por_pagina`, hoje 40) que `knowledge/extract.py` usa
+para decidir se um PDF tem camada de texto nativa útil ou precisa de OCR — um
+documento que já não passa nesse mínimo também não teria texto de sobra depois
+do OCR. Falhar aqui remove o PDF recém-copiado e o cache de extração que a
+checagem já havia gerado, para que o cadastro fique exatamente como antes da
+tentativa.
+
+**A chave de acesso é o quinto, e é sobre quem, não sobre o quê.** O enunciado
+não pede autenticação em lugar nenhum, e por isso ela não é apresentada como
+"mais segurança" — é apresentada como consequência de uma afirmação que a
+própria arquitetura já faz: a solução roda numa planta segmentada (§4), com o
+sensor de um lado publicando e o técnico do outro consultando. Se o cadastro
+de documento reescreve o procedimento que aquele técnico vai seguir, ele não
+pode ser ação de qualquer um que alcance a porta HTTP ou o painel — seria
+incoerente com a própria premissa de segmentação. `cadastro.chave_acesso`
+(sobrescrita por `PRESCRITIVA_CADASTRO_KEY`, nunca versionada) vem desligada
+por padrão: nenhuma instalação nova, nem a do avaliador rodando isto pela
+primeira vez, fica travada de saída. Configurada, ela é exigida pelas duas
+portas — `X-Prescritiva-Key` na API, o mesmo campo no painel — porque as duas
+chamam a mesma `cadastrar_documento()` (§5), e uma proteção que valesse só num
+dos dois caminhos seria a porta dos fundos aberta.
+
 ## 4. Implantação em ambiente industrial
 
 ```mermaid
@@ -520,7 +555,8 @@ src/prescritiva/
 ├── knowledge/
 │   ├── extract.py       PDF -> texto, OCR com cache
 │   ├── chunk.py         fatiamento por secao
-│   └── store.py         busca de trecho e regra de cobertura
+│   ├── store.py         busca de trecho e regra de cobertura
+│   └── cadastro.py      cadastro de documento: unica porta pra API e painel
 ├── llm/
 │   ├── base.py          interface do gerador
 │   ├── ollama_client.py adaptador do modelo local

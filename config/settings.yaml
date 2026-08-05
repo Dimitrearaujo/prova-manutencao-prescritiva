@@ -38,6 +38,20 @@ knowledge:
   coverage_min_score: 1.0
   retrieval_top_k: 4
 
+# Protecoes do cadastro de documento novo, alem da validacao de nome, tamanho e
+# PDF legivel que ja roda em prescritiva.knowledge.cadastro para qualquer envio.
+cadastro:
+  # null = cadastro aberto (conveniencia em desenvolvimento). Numa planta
+  # segmentada isto e segredo da instalacao, nao do repositorio versionado,
+  # entao o valor real chega por PRESCRITIVA_CADASTRO_KEY, nunca por aqui.
+  chave_acesso: null
+  # Abaixo disto o texto extraido (nativo ou OCR) nao sustenta um procedimento
+  # consultavel - o documento entraria na base sem nunca poder cobrir defeito
+  # nenhum. Mesmo minimo por pagina que decide entre texto nativo e OCR em
+  # knowledge/extract.py: um PDF que nao passa nesse minimo tambem nao teria
+  # texto de sobra depois do OCR.
+  min_chars_por_pagina: 40
+
 llm:
   provider: ollama
   model: qwen2.5:3b

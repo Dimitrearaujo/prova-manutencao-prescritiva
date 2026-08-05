@@ -25,6 +25,10 @@ _SOBRESCRITAS_ENV: dict[str, tuple[str, str]] = {
     # solucao. O endereco muda por instalacao e nao pode viver no arquivo
     # versionado nem dentro da imagem.
     "PRESCRITIVA_MQTT_HOST": ("mqtt", "host"),
+    # A chave do cadastro e segredo da instalacao, nunca do repositorio: um
+    # settings.yaml versionado com uma chave real a tornaria publica no
+    # primeiro commit.
+    "PRESCRITIVA_CADASTRO_KEY": ("cadastro", "chave_acesso"),
 }
 
 
@@ -59,6 +63,9 @@ class Settings:
     # nenhum. O default vazio deixa um settings.yaml sem o bloco continuar
     # valido, em vez de exigir configuracao de algo que talvez nao seja usado.
     mqtt: dict[str, Any] = field(default_factory=dict)
+    # Mesmo motivo: um settings.yaml sem o bloco `cadastro` continua valido, e o
+    # cadastro roda aberto (sem chave) ate alguem configurar de proposito.
+    cadastro: dict[str, Any] = field(default_factory=dict)
 
 
 def _aplicar_sobrescritas_env(raw: dict[str, Any]) -> dict[str, Any]:
@@ -85,6 +92,7 @@ def load_settings() -> Settings:
         knowledge=raw["knowledge"],
         llm=raw["llm"],
         mqtt=raw.get("mqtt", {}),
+        cadastro=raw.get("cadastro", {}),
     )
 
 
