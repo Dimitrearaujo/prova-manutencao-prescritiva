@@ -8,7 +8,6 @@ que a avaliacao mediu.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -19,8 +18,7 @@ from pydantic import ValidationError
 from prescritiva.config import load_catalog, load_settings
 from prescritiva.diagnosis.contexto import ATIPICO, INEDITO, formatar_regime
 from prescritiva.diagnosis.engine import MotorDiagnostico
-from prescritiva.knowledge.extract import extract_all
-from prescritiva.knowledge.store import BaseConhecimento
+from prescritiva.knowledge.cadastro import CadastroInvalido, cadastrar_documento
 
 st.set_page_config(page_title="Manutencao Prescritiva", page_icon="⚙", layout="wide")
 
@@ -411,22 +409,23 @@ def tela_chat(motor: MotorDiagnostico) -> None:
         enviado = st.file_uploader("PDF do procedimento", type="pdf")
         if enviado is not None and st.button("Indexar documento", type="primary"):
             settings = load_settings()
-            destino: Path = settings.paths.docs_dir / enviado.name
-            destino.write_bytes(enviado.getvalue())
-            cfg = settings.knowledge
+            # Mesma rotina da API (`prescritiva.knowledge.cadastro`): valida o
+            # nome, grava com teto de tamanho, confere que o PDF abre e invalida
+            # o cache de extracao antes de reindexar. O painel nao reimplementa
+            # nada disso - reenviar um PDF corrigido com o mesmo nome por aqui
+            # tem de valer tanto quanto reenviar pela API.
             with st.spinner("Extraindo e reindexando (documento escaneado exige OCR)..."):
-                extraidos = extract_all(
-                    settings.paths.docs_dir, settings.paths.knowledge_dir,
-                    dpi=cfg["ocr_dpi"], min_confidence=cfg["ocr_min_confidence"],
-                )
-                base = BaseConhecimento(
-                    tamanho_trecho=cfg["chunk_chars"], sobreposicao=cfg["chunk_overlap"],
-                    chars_escopo=cfg["scope_chars"], score_minimo_cobertura=cfg["coverage_min_score"],
-                ).indexar(extraidos)
-                base.salvar(settings.paths.index_dir)
-                motor.base = base
-            st.success(f"{enviado.name} indexado. A base agora tem {len(base.documentos)} procedimentos.")
-            st.cache_data.clear()
+                try:
+                    resultado = cadastrar_documento(enviado, enviado.name, settings)
+                except CadastroInvalido as erro:
+                    st.error(erro.mensagem)
+                else:
+                    motor.base = resultado.base
+                    st.success(
+                        f"{resultado.nome} indexado. A base agora tem "
+                        f"{len(resultado.base.documentos)} procedimentos."
+                    )
+                    st.cache_data.clear()
 
     documentos = ["(todos)"] + [d.nome for d in motor.base.documentos]
     escolhido = st.selectbox("Restringir a um procedimento", documentos)
