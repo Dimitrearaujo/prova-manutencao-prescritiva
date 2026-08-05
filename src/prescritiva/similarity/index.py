@@ -13,7 +13,7 @@ rejeicao.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import joblib
@@ -23,6 +23,13 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import RobustScaler
 
 from prescritiva.features.build import FEATURE_COLUMNS, build_features
+
+# Piso da distancia antes de inverte-la, como fracao da distancia mediana da
+# propria vizinhanca. Vizinho mais proximo que isso pesa como se estivesse no
+# piso, e nenhum ponto isolado consegue dominar o consenso.
+_PISO_RELATIVO_DISTANCIA = 0.05
+# Guarda contra divisao por zero quando a vizinhanca inteira esta a distancia 0.
+_DISTANCIA_MINIMA = 1e-6
 
 
 @dataclass
@@ -37,6 +44,16 @@ class Vizinho:
 
 @dataclass
 class ResultadoSimilaridade:
+    """O que a busca por vizinhos apurou, com as duas medidas de consenso.
+
+    `confianca` e a fracao do PESO que o rotulo vencedor reune, e o peso cresce
+    com a proximidade. `consenso_simples` e a fracao dos vizinhos que carregam
+    esse rotulo, um voto por vizinho. As duas convivem porque medem coisas
+    diferentes: a ponderada diz o quanto o vencedor esta perto, a simples diz
+    quantos concordam. Um unico vizinho muito proximo levanta a primeira sem
+    levantar a segunda, e e a segunda que sustenta a palavra "consenso".
+    """
+
     regime_rpm: str
     vizinhos: list[Vizinho]
     distribuicao: dict[str, float]
@@ -45,6 +62,8 @@ class ResultadoSimilaridade:
     distancia_media: float
     limiar_rejeicao: float
     reconhecido: bool
+    votos: dict[str, int] = field(default_factory=dict)
+    consenso_simples: float = 0.0
     motivo: str = ""
 
 
@@ -110,7 +129,26 @@ class IndiceSimilaridade:
         self._limiares = limiares
         return limiares
 
-    def consultar(self, evento: pd.DataFrame, *, excluir_ids: set[int] | None = None) -> ResultadoSimilaridade:
+    def consultar(
+        self,
+        evento: pd.DataFrame,
+        *,
+        excluir_ids: set[int] | None = None,
+        momento: pd.Timestamp | str | None = None,
+        janela_s: float = 0.0,
+    ) -> ResultadoSimilaridade:
+        """Compara o evento com o historico do proprio regime de rotacao.
+
+        `momento` e `janela_s` excluem a VIZINHANCA TEMPORAL do evento: sai da
+        busca todo registro gravado a menos de `janela_s` segundos de `momento`.
+        Excluir apenas o id nao basta quando o evento veio do proprio historico.
+        O ensaio gravou uma leitura a cada dois segundos, e a leitura seguinte e
+        praticamente a mesma medicao com outro carimbo de hora: ela entra como
+        vizinho a distancia ~0, leva quase todo o peso e o resultado parece bom
+        por um motivo que nao existe em producao. E o mesmo vazamento temporal
+        que este projeto recusa na particao aleatoria de scripts/evaluate.py, e
+        deixa-lo aqui seria medir com um criterio e demonstrar com outro.
+        """
         regime = evento["regime_rpm"].iloc[0]
         if regime not in self._indices:
             return ResultadoSimilaridade(
@@ -126,13 +164,87 @@ class IndiceSimilaridade:
             )
 
         matriz = self._scalers[regime].transform(build_features(evento, self.colunas))
-        # Pede folga para poder descartar o proprio evento quando ele veio do historico.
-        k = min(self.n_neighbors + len(excluir_ids or ()), len(self._metadados[regime]))
-        distancias, posicoes = self._indices[regime].kneighbors(matriz, n_neighbors=k)
-
         meta = self._metadados[regime]
+        total = len(meta)
+
+        # Pede folga para poder descartar o proprio evento e a vizinhanca dele.
+        # Quando o corte leva vizinho demais - um evento no meio de um bloco de
+        # gravacao pode ter centenas de leituras dentro da janela - a busca e
+        # ampliada em vez de devolver um consenso apurado sobre meia duzia de
+        # sobreviventes.
+        k = min(self.n_neighbors + len(excluir_ids or ()), total)
+        while True:
+            distancias, posicoes = self._indices[regime].kneighbors(matriz, n_neighbors=k)
+            vizinhos = self._selecionar_vizinhos(
+                meta, distancias[0], posicoes[0], excluir_ids, momento, janela_s
+            )
+            if len(vizinhos) >= self.n_neighbors or k >= total:
+                break
+            k = min(k * 8, total)
+
+        pesos = _pesos_por_distancia([v.distancia for v in vizinhos])
+        distribuicao: dict[str, float] = {}
+        votos: dict[str, int] = {}
+        for vizinho, peso in zip(vizinhos, pesos, strict=True):
+            distribuicao[vizinho.fault] = distribuicao.get(vizinho.fault, 0.0) + peso
+            votos[vizinho.fault] = votos.get(vizinho.fault, 0) + 1
+        distribuicao = dict(sorted(distribuicao.items(), key=lambda kv: kv[1], reverse=True))
+        votos = dict(sorted(votos.items(), key=lambda kv: kv[1], reverse=True))
+
+        predominante = next(iter(distribuicao), "")
+        confianca = distribuicao.get(predominante, 0.0)
+        apoios = votos.get(predominante, 0)
+        consenso_simples = apoios / len(vizinhos) if vizinhos else 0.0
+        distancia_media = float(np.mean([v.distancia for v in vizinhos])) if vizinhos else float("inf")
+        limiar = self._limiares.get(regime, float("inf"))
+
+        reconhecido, motivo = True, ""
+        if distancia_media > limiar:
+            reconhecido = False
+            motivo = (
+                f"O evento esta a uma distancia media de {distancia_media:.2f} do historico, "
+                f"acima do limiar de {limiar:.2f} calibrado para {regime}. "
+                "Nenhum padrao conhecido se parece o suficiente com ele."
+            )
+        # O portao roda sobre o voto simples, nao sobre o peso: e a fracao de
+        # vizinhos que de fato concorda. Medido sobre o peso, um unico vizinho
+        # proximo aprovava sozinho uma vizinhanca dividida.
+        elif consenso_simples < self.min_consensus:
+            reconhecido = False
+            motivo = (
+                f"Os vizinhos nao concordam: o rotulo mais votado aparece em {apoios} dos "
+                f"{len(vizinhos)} vizinhos ({consenso_simples:.0%}), abaixo do minimo de "
+                f"{self.min_consensus:.0%}."
+            )
+
+        return ResultadoSimilaridade(
+            regime_rpm=regime,
+            vizinhos=vizinhos,
+            distribuicao=distribuicao,
+            fault_predominante=predominante,
+            confianca=float(confianca),
+            distancia_media=distancia_media,
+            limiar_rejeicao=limiar,
+            reconhecido=reconhecido,
+            votos=votos,
+            consenso_simples=float(consenso_simples),
+            motivo=motivo,
+        )
+
+    def _selecionar_vizinhos(
+        self,
+        meta: pd.DataFrame,
+        distancias: np.ndarray,
+        posicoes: np.ndarray,
+        excluir_ids: set[int] | None,
+        momento: pd.Timestamp | str | None,
+        janela_s: float,
+    ) -> list[Vizinho]:
+        elegivel = _fora_da_janela(meta["created_at"].to_numpy()[posicoes], momento, janela_s)
         vizinhos: list[Vizinho] = []
-        for distancia, posicao in zip(distancias[0], posicoes[0], strict=True):
+        for ordem, (distancia, posicao) in enumerate(zip(distancias, posicoes, strict=True)):
+            if not elegivel[ordem]:
+                continue
             linha = meta.iloc[posicao]
             if excluir_ids and int(linha["id"]) in excluir_ids:
                 continue
@@ -148,44 +260,7 @@ class IndiceSimilaridade:
             )
             if len(vizinhos) == self.n_neighbors:
                 break
-
-        pesos = _pesos_por_distancia([v.distancia for v in vizinhos])
-        distribuicao: dict[str, float] = {}
-        for vizinho, peso in zip(vizinhos, pesos, strict=True):
-            distribuicao[vizinho.fault] = distribuicao.get(vizinho.fault, 0.0) + peso
-        distribuicao = dict(sorted(distribuicao.items(), key=lambda kv: kv[1], reverse=True))
-
-        predominante = next(iter(distribuicao), "")
-        confianca = distribuicao.get(predominante, 0.0)
-        distancia_media = float(np.mean([v.distancia for v in vizinhos])) if vizinhos else float("inf")
-        limiar = self._limiares.get(regime, float("inf"))
-
-        reconhecido, motivo = True, ""
-        if distancia_media > limiar:
-            reconhecido = False
-            motivo = (
-                f"O evento esta a uma distancia media de {distancia_media:.2f} do historico, "
-                f"acima do limiar de {limiar:.2f} calibrado para {regime}. "
-                "Nenhum padrao conhecido se parece o suficiente com ele."
-            )
-        elif confianca < self.min_consensus:
-            reconhecido = False
-            motivo = (
-                f"Os vizinhos nao concordam: o rotulo mais votado reune apenas "
-                f"{confianca:.0%} do peso, abaixo do minimo de {self.min_consensus:.0%}."
-            )
-
-        return ResultadoSimilaridade(
-            regime_rpm=regime,
-            vizinhos=vizinhos,
-            distribuicao=distribuicao,
-            fault_predominante=predominante,
-            confianca=float(confianca),
-            distancia_media=distancia_media,
-            limiar_rejeicao=limiar,
-            reconhecido=reconhecido,
-            motivo=motivo,
-        )
+        return vizinhos
 
     def salvar(self, destino: Path) -> None:
         destino.mkdir(parents=True, exist_ok=True)
@@ -214,9 +289,31 @@ class IndiceSimilaridade:
         return indice
 
 
+def _fora_da_janela(
+    instantes: np.ndarray, momento: pd.Timestamp | str | None, janela_s: float
+) -> np.ndarray:
+    """Marca os vizinhos gravados fora da janela temporal do evento consultado."""
+    if momento is None or janela_s <= 0:
+        return np.ones(len(instantes), dtype=bool)
+    alvo = pd.Timestamp(momento)
+    alvo = alvo.tz_localize("UTC") if alvo.tzinfo is None else alvo.tz_convert("UTC")
+    distancia_no_tempo = (pd.to_datetime(instantes, utc=True) - alvo).total_seconds().to_numpy()
+    return np.abs(distancia_no_tempo) > janela_s
+
+
 def _pesos_por_distancia(distancias: list[float]) -> list[float]:
-    """Vizinho mais proximo pesa mais, e os pesos somam 1."""
+    """Vizinho mais proximo pesa mais, e os pesos somam 1.
+
+    O piso na distancia e o que impede o kNN de virar 1-NN. Com o inverso puro,
+    um vizinho a distancia ~0 recebe peso na casa de 1e6 contra ~1 dos demais e
+    decide sozinho: medido no indice de producao, 61% das consultas tinham um
+    unico vizinho com mais de metade do peso, mediana 0,99998. O piso e relativo
+    a escala da propria vizinhanca, e nao um valor absoluto, porque a distancia
+    tipica muda de regime para regime.
+    """
     if not distancias:
         return []
-    inversos = 1.0 / (np.asarray(distancias) + 1e-6)
+    valores = np.asarray(distancias, dtype=float)
+    piso = max(float(np.median(valores)) * _PISO_RELATIVO_DISTANCIA, _DISTANCIA_MINIMA)
+    inversos = 1.0 / np.maximum(valores, piso)
     return list(inversos / inversos.sum())

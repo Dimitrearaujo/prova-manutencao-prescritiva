@@ -15,6 +15,7 @@ import pytest
 
 from prescritiva.config import load_catalog, load_settings
 from prescritiva.knowledge.store import BaseConhecimento
+from prescritiva.text import normalize
 
 ESPERADO: dict[str, str | None] = {
     "rolamento_inner": "Doc1",
@@ -73,14 +74,61 @@ def test_limiar_fica_numa_faixa_vazia(base, catalogo):
     assert max(rejeitados) < limiar * 0.8
 
 
-def test_mencao_solta_nao_conta_como_cobertura(base):
-    """O procedimento de rolamentos lista "Ventiladores" entre os equipamentos.
+def test_o_acervo_real_nao_discrimina_escopo_de_corpo(base):
+    """Registra que a regra do escopo NAO corrige nenhum erro neste acervo.
 
-    Se a cobertura fosse decidida por presenca do termo no corpo, uma falha de
-    ventoinha receberia o procedimento de rolamento e o tecnico seria mandado
-    trocar um mancal por causa de uma palavra numa lista.
+    Os seis procedimentos sao monotematicos e nomeiam o componente no titulo, e
+    nenhum cita no corpo um componente tratado por outro. O unico termo cruzado e
+    "ventilador", no procedimento de rolamentos - e ele nao casa com "ventoinha"
+    porque os radicais diferem (tests/test_text.py verifica).
+
+    Este teste existe porque a documentacao do projeto ja afirmou o contrario, e
+    a afirmacao caia em cinco linhas de codigo. Se um documento novo criar o caso
+    discriminante, este teste falha e obriga a rever a redacao em vez de deixar
+    uma justificativa envelhecer sozinha.
     """
-    doc1 = next(d for d in base.documentos if d.nome == "Doc1")
-    assert "entilador" in doc1.escopo
-    cobertura = base.cobertura("ventoinha", "ventoinha pas helice", "Falha em ventoinha")
-    assert not cobertura.coberto
+    corpo_doc1 = normalize(" ".join(t.texto for t in base.trechos if t.documento == "Doc1"))
+    for termo in ("polia", "correia", "acoplamento", "desalinha", "excentric"):
+        assert termo not in corpo_doc1, (
+            f'"{termo}" passou a aparecer no corpo do Doc1: o acervo agora tem caso '
+            "discriminante e a redacao da secao 3.6 da ARQUITETURA precisa ser revista"
+        )
+
+
+def test_mencao_no_corpo_nao_concede_cobertura(base):
+    """A garantia da regra, provada num caso CONSTRUIDO.
+
+    Como o acervo entregue nao produz o conflito, o caso e montado aqui: um
+    procedimento que TRATA de desalinhamento e apenas MENCIONA ventoinha varias
+    vezes no corpo. A cobertura de ventoinha nao pode cair nele.
+    """
+    from prescritiva.knowledge.extract import ExtractedDocument
+
+    documento = ExtractedDocument(
+        nome="DocSintetico",
+        arquivo="DocSintetico.pdf",
+        paginas=1,
+        metodo="sintetico-de-teste",
+        texto=(
+            "Procedimento para Correcao de Desalinhamento em Motor Eletrico\n"
+            "1. Objetivo\n"
+            "Corrigir desalinhamento entre o eixo do motor e a carga acionada.\n"
+            "2. Sintomas\n"
+            "O desalinhamento aparece junto com vibracao da ventoinha, ruido na "
+            "ventoinha e desgaste da ventoinha. Uma ventoinha trincada agrava o "
+            "quadro. Inspecione a ventoinha antes de alinhar.\n"
+        ),
+    )
+    sintetica = BaseConhecimento(score_minimo_cobertura=base.score_minimo_cobertura).indexar(
+        [documento]
+    )
+
+    corpo = normalize(" ".join(t.texto for t in sintetica.trechos))
+    assert corpo.count("ventoinha") >= 4, "o caso construido precisa citar ventoinha no corpo"
+
+    cobertura = sintetica.cobertura("ventoinha", "ventoinha pas helice", "Falha em ventoinha")
+    assert not cobertura.coberto, "mencao no corpo nao pode conceder cobertura"
+
+    assert sintetica.cobertura(
+        "desalinhamento", "desalinhamento eixo acoplamento", "Desalinhamento de eixo"
+    ).coberto, "o documento continua cobrindo o defeito que ele de fato trata"

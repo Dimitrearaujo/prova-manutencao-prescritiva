@@ -37,15 +37,18 @@ ALL_COLUMNS: tuple[str, ...] = SENSOR_COLUMNS + DERIVED_COLUMNS
 # ablacao precisa poder reintroduzi-las para reproduzir a comparacao.
 EXCLUIDAS: tuple[str, ...] = (
     # 14 valores distintos, 61 Hz em 61% das linhas, inclusive com o motor
-    # parado. E a frequencia da rede eletrica, nao uma medicao de vibracao.
+    # parado. E a frequencia da rede eletrica, nao uma medicao de vibracao. E o
+    # IQR que a escala aqui varia de 1.0 a 44.0 entre regimes: onde ele e
+    # pequeno, a coluna sozinha vale dezenas de unidades de distancia.
     "z_peak_vel_comp_freq_hz",
     "x_peak_vel_comp_freq_hz",
     # Derivadas da coluna acima: se a origem e artefato, a razao tambem e.
     "ordem_z",
     "ordem_x",
-    # Correlaciona 0.50 a 0.93 com a posicao no bloco de gravacao, subindo em
-    # uns e caindo em outros: e aquecimento ambiente. E separa os defeitos pior
-    # do que varia dentro de cada um.
+    # Correlaciona ate 0.93 com a posicao no bloco de gravacao, subindo em uns e
+    # caindo em outros, e os blocos mais correlacionados sao todos da segunda
+    # rodada: e aquecimento ambiente da sessao. E separa os defeitos pior do que
+    # varia dentro de cada um (razao entre/dentro 0.72).
     "temperature_c",
 )
 

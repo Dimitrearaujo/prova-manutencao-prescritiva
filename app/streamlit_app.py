@@ -13,8 +13,11 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from plotly.graph_objects import Figure
+from pydantic import ValidationError
 
 from prescritiva.config import load_catalog, load_settings
+from prescritiva.diagnosis.contexto import ATIPICO, INEDITO, formatar_regime
 from prescritiva.diagnosis.engine import MotorDiagnostico
 from prescritiva.knowledge.extract import extract_all
 from prescritiva.knowledge.store import BaseConhecimento
@@ -33,6 +36,16 @@ ROTULO_SITUACAO = {
     "padrao_desconhecido": "Padrao nao reconhecido",
     "estado_operacional": "Condicao de operacao, nao e problema",
 }
+
+
+def _milhar(valor: int) -> str:
+    return f"{valor:,}".replace(",", ".")
+
+
+def _rpm_do_regime(regime: str) -> float:
+    """Extrai o numero de "2000rpm" para ordenar os regimes pela rotacao."""
+    digitos = "".join(caractere for caractere in regime if caractere.isdigit())
+    return float(digitos) if digitos else 0.0
 
 
 @st.cache_resource
@@ -88,9 +101,11 @@ def tela_dados(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
         )
 
     st.markdown(
-        "**Cada defeito ocupa um bloco continuo de tempo.** O ensaio gravou um defeito de cada "
-        "vez, o que torna um split aleatorio invalido para avaliar: leituras a segundos de "
-        "distancia cairiam nos dois lados."
+        "**Dentro de cada gravação as leituras acontecem a segundos de distância e são quase "
+        "idênticas**, o que torna um sorteio inválido para avaliar: a mesma medição cairia nos "
+        "dois lados da partição. Os blocos não são disjuntos entre si — `scripts/eda.py` reporta "
+        "16 dos 26 com sobreposição temporal, porque alguns defeitos foram retomados semanas "
+        "depois —, e o argumento não precisa que sejam: a partição corta **dentro** de cada bloco."
     )
     linha = eventos.copy()
     linha["dia"] = linha["created_at"].dt.floor("D")
@@ -133,6 +148,51 @@ def tela_dados(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
     st.dataframe(tabela, use_container_width=True, hide_index=True)
 
 
+def _data_br(carimbo: str | None) -> str:
+    partes = (carimbo or "")[:10].split("-")
+    return f"{partes[2]}/{partes[1]}/{partes[0]}" if len(partes) == 3 else "-"
+
+
+def _grafico_regimes(por_regime: dict[str, int], regime_evento: str) -> Figure:
+    """Distribuicao do padrao por rotacao, com o regime do evento destacado.
+
+    O destaque nao pode depender so de cor: a barra do evento atual recebe
+    tambem hachura, sufixo no rotulo do eixo e o valor escrito na propria barra.
+    """
+    total = sum(por_regime.values())
+    linhas = []
+    for regime, ocorrencias in sorted(por_regime.items(), key=lambda item: _rpm_do_regime(item[0])):
+        atual = regime == regime_evento
+        linhas.append(
+            {
+                "regime": formatar_regime(regime) + (" (evento atual)" if atual else ""),
+                "fatia": ocorrencias / total,
+                "valor": f"{_milhar(ocorrencias)} ({ocorrencias / total:.0%})",
+                "origem": "Regime deste evento" if atual else "Demais regimes",
+            }
+        )
+    quadro = pd.DataFrame(linhas)
+    figura = px.bar(
+        quadro,
+        x="fatia", y="regime", orientation="h", text="valor",
+        color="origem", pattern_shape="origem",
+        color_discrete_map={"Regime deste evento": "#1F4E79", "Demais regimes": "#9AA5B1"},
+        pattern_shape_map={"Regime deste evento": "/", "Demais regimes": ""},
+        category_orders={"regime": list(quadro["regime"])},
+        labels={"fatia": "Fatia das ocorrencias do padrao", "regime": "", "origem": ""},
+        title="Contexto operacional: em que rotacao este padrao ja apareceu",
+    )
+    figura.update_traces(textposition="auto", cliponaxis=False)
+    figura.update_layout(
+        height=330,
+        xaxis_tickformat=".0%",
+        xaxis_range=[0, min(1.0, float(quadro["fatia"].max()) * 1.25)],
+        legend={"orientation": "h", "yanchor": "bottom", "y": -0.28, "x": 0},
+        margin={"t": 60, "b": 30},
+    )
+    return figura
+
+
 def tela_diagnostico(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
     st.subheader("Diagnostico de um evento novo")
 
@@ -147,7 +207,10 @@ def tela_diagnostico(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
             st.session_state.evento = universo.sample(1).iloc[0].to_dict()
         evento = dict(st.session_state.evento)
         rotulo_real = evento.get("fault")
-        st.caption(f"Rotulo anotado pelo operador neste registro: **{rotulo_real}** (nao e enviado ao motor)")
+        st.caption(
+            f"Rotulo anotado pelo operador neste registro: **{rotulo_real}**. Ele nao e enviado "
+            "ao motor, e o proprio registro fica de fora da busca de vizinhos."
+        )
     else:
         texto = st.text_area("JSON do evento", height=150, placeholder='{"rpm": 1000.0, ...}')
         if not texto.strip():
@@ -161,8 +224,18 @@ def tela_diagnostico(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
         rotulo_real = evento.get("fault")
 
     evento.pop("fault", None)
-    with st.spinner("Consultando historico e procedimentos..."):
-        diagnostico = motor.diagnosticar(evento)
+    rpm_informado = evento.get("rpm")
+    try:
+        with st.spinner("Consultando historico e procedimentos..."):
+            diagnostico = motor.diagnosticar(evento)
+    except ValidationError as erro:
+        # Colar um JSON incompleto e o erro mais provavel numa demonstracao, e
+        # ele nao pode virar traceback na tela: o campo que falta e a resposta.
+        faltando = ", ".join(
+            str(detalhe["loc"][0]) if detalhe["loc"] else detalhe["msg"] for detalhe in erro.errors()
+        )
+        st.error(f"O evento nao tem os campos exigidos pelo contrato de entrada: {faltando}.")
+        return
 
     cor = CORES_SITUACAO[diagnostico.situacao]
     st.markdown(
@@ -173,9 +246,27 @@ def tela_diagnostico(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
     st.write("")
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("Tipo de defeito", diagnostico.rotulo or "nao determinado")
-    col2.metric("Consenso dos vizinhos", f"{diagnostico.confianca:.0%}")
-    col3.metric("Regime", diagnostico.regime_rpm)
+    col1.metric(
+        "Padrao identificado", diagnostico.rotulo or "nao determinado",
+        help="Rotulo que os vizinhos mais proximos carregam. Nao vem de classificador treinado.",
+    )
+    col2.metric(
+        "Consenso dos vizinhos", f"{diagnostico.confianca:.0%}",
+        help=(
+            f"Peso somado dos {motor.indice.n_neighbors} vizinhos mais proximos que carregam esse "
+            f"rotulo. Abaixo de {motor.indice.min_consensus:.0%} o evento e tratado como padrao "
+            "nao reconhecido."
+        ),
+    )
+    col3.metric(
+        "Regime de rotacao", formatar_regime(diagnostico.regime_rpm),
+        help="A busca e particionada por rotacao: so entram no calculo eventos do mesmo regime.",
+    )
+    if rpm_informado is not None and abs(float(rpm_informado) - _rpm_do_regime(diagnostico.regime_rpm)) >= 1:
+        st.caption(
+            f"O evento chegou com {float(rpm_informado):.0f} rpm. O regime com historico mais "
+            f"proximo e {formatar_regime(diagnostico.regime_rpm)}, e a comparacao foi feita contra ele."
+        )
 
     if rotulo_real:
         acertou = diagnostico.fault == rotulo_real
@@ -183,48 +274,134 @@ def tela_diagnostico(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
                     f"Diverge do rotulo do operador ({rotulo_real})."))
 
     st.info(diagnostico.mensagem)
+    if diagnostico.situacao == "defeito_sem_documentacao":
+        st.caption(
+            "O cadastro e feito na aba **Procedimentos**, em *Cadastrar novo documento "
+            "orientativo*. Depois de indexado, o mesmo evento passa a receber instrucao."
+        )
 
-    if diagnostico.historico.get("ocorrencias"):
-        st.markdown("#### Ocorrencias historicas deste defeito")
-        h = diagnostico.historico
+    historico = diagnostico.historico
+    if historico.get("ocorrencias"):
+        st.markdown(f"#### Historico de {diagnostico.rotulo}")
         c1, c2, c3 = st.columns(3)
-        c1.metric("Total", f"{h['ocorrencias']:,}".replace(",", "."))
-        c2.metric("Media por dia", f"{h['ocorrencias_por_dia']:.0f}")
-        c3.metric("Dias com registro", h["dias_cobertos"])
-        serie = pd.DataFrame(
-            {"dia": list(h["por_dia"].keys()), "registros": list(h["por_dia"].values())}
+        c1.metric(
+            "Ocorrencias registradas", _milhar(historico["ocorrencias"]),
+            help="Cada ocorrencia e uma leitura de vibracao gravada, nao uma parada de maquina.",
         )
-        st.plotly_chart(
-            px.bar(serie, x="dia", y="registros", title="Distribuicao ao longo do tempo"),
-            use_container_width=True,
+        c2.metric(
+            "Media por dia com registro", f"{historico['ocorrencias_por_dia']:.0f}",
+            help="Ocorrencias divididas pelos dias em que houve registro, nao pelo periodo inteiro.",
         )
+        c3.metric(
+            "Dias com registro", historico["dias_cobertos"],
+            help=f"De {_data_br(historico['primeira'])} a {_data_br(historico['ultima'])}.",
+        )
+
+        esquerda, direita = st.columns([3, 2])
+        with esquerda:
+            serie = pd.DataFrame(
+                {"dia": list(historico["por_dia"].keys()), "registros": list(historico["por_dia"].values())}
+            )
+            st.plotly_chart(
+                px.bar(
+                    serie, x="dia", y="registros",
+                    labels={"dia": "Dia", "registros": "Registros"},
+                    title="Distribuicao ao longo do tempo",
+                ).update_layout(height=330, margin={"t": 60, "b": 30}),
+                use_container_width=True,
+            )
+        with direita:
+            st.plotly_chart(
+                _grafico_regimes(historico["por_regime"], diagnostico.regime_rpm),
+                use_container_width=True,
+            )
+
+        # Caixa neutra quando o regime confere: verde, abaixo da tarja vermelha
+        # de defeito, seria lido como "esta tudo bem com a maquina". O que muda
+        # de cor e so o que exige conferencia, e a frase diz qual e o caso.
+        contexto = diagnostico.contexto_operacional
+        if contexto.get("alinhamento") in {ATIPICO, INEDITO}:
+            st.warning(contexto["leitura"])
+        elif contexto.get("leitura"):
+            st.info(contexto["leitura"])
+
+        campanhas = historico.get("por_campanha") or {}
+        if len(campanhas) > 1:
+            detalhe = ", ".join(
+                f"campanha {campanha} com {_milhar(registros)} registros"
+                for campanha, registros in campanhas.items()
+            )
+            st.caption(
+                f"Gravado em {len(campanhas)} campanhas de coleta: {detalhe}. Cada campanha e um "
+                "bloco continuo do ensaio, o que explica os blocos do grafico de tempo."
+            )
 
     if diagnostico.instrucoes:
         st.markdown("#### Instrucoes de correcao")
-        st.caption(f"Gerado por `{diagnostico.gerador}` a partir de {diagnostico.cobertura.get('documento')}")
+        st.caption(
+            f"Gerado por `{diagnostico.gerador}` a partir de "
+            f"{diagnostico.cobertura.get('documento')}, usando apenas os trechos listados abaixo."
+        )
         st.markdown(diagnostico.instrucoes)
 
     if diagnostico.trechos:
         with st.expander(f"Trechos do procedimento usados ({len(diagnostico.trechos)})"):
+            st.caption("Aderencia = score BM25 do trecho para a consulta do defeito; maior e melhor.")
             for trecho in diagnostico.trechos:
                 st.markdown(f"**{trecho['documento']} / {trecho['secao']}** — aderencia {trecho['score']:.1f}")
                 st.text(trecho["texto"][:900])
 
     with st.expander("Como a similaridade decidiu"):
         similaridade = diagnostico.similaridade
+        # Rotacao fora da grade nao chega a consultar o indice: nao ha vizinho,
+        # nao ha distribuicao. A tela precisa explicar isso em vez de quebrar,
+        # porque e o desfecho que a pergunta "e se a maquina rodar a 1500 rpm?"
+        # produz - a mais previsivel de todas numa apresentacao.
+        if not similaridade.get("distribuicao"):
+            st.info(
+                similaridade.get("motivo")
+                or "Nenhum vizinho foi consultado, entao nao ha distribuicao a mostrar."
+            )
+            return
         distribuicao = pd.DataFrame(
             {"rotulo": list(similaridade["distribuicao"].keys()),
              "peso": list(similaridade["distribuicao"].values())}
-        )
+        ).sort_values("peso")
         st.plotly_chart(
-            px.bar(distribuicao, x="peso", y="rotulo", orientation="h",
-                   title="Peso dos vizinhos por rotulo"),
+            px.bar(
+                distribuicao, x="peso", y="rotulo", orientation="h",
+                labels={"peso": "Peso no consenso", "rotulo": ""},
+                title=f"Peso dos {motor.indice.n_neighbors} vizinhos por rotulo",
+            ).update_layout(xaxis_tickformat=".0%"),
             use_container_width=True,
         )
         c1, c2 = st.columns(2)
-        c1.metric("Distancia media aos vizinhos", f"{similaridade['distancia_media']:.2f}")
-        c2.metric("Limiar de rejeicao do regime", f"{similaridade['limiar_rejeicao']:.2f}")
-        st.dataframe(pd.DataFrame(similaridade["vizinhos"]), use_container_width=True, hide_index=True)
+        c1.metric(
+            "Distancia media aos vizinhos", f"{similaridade['distancia_media']:.2f}",
+            help="Distancia euclidiana em escala padronizada, nao em unidade fisica.",
+        )
+        c2.metric(
+            "Limiar de rejeicao do regime", f"{similaridade['limiar_rejeicao']:.2f}",
+            help="Percentil da distancia observada no proprio historico deste regime.",
+        )
+        if similaridade["reconhecido"]:
+            st.caption(
+                f"Distancia media abaixo do limiar e consenso de {diagnostico.confianca:.0%} acima "
+                f"do minimo de {motor.indice.min_consensus:.0%}: o padrao foi aceito."
+            )
+        else:
+            st.caption(f"Padrao recusado. {similaridade['motivo']}")
+        vizinhos = pd.DataFrame(similaridade["vizinhos"]).rename(
+            columns={
+                "id": "Evento", "fault": "Rotulo", "fault_original": "Rotulo bruto",
+                "created_at": "Registrado em", "rpm": "rpm", "distancia": "Distancia",
+            }
+        )
+        st.caption(
+            f"Os {len(vizinhos)} vizinhos mais proximos, dos {motor.indice.n_neighbors} que "
+            "entraram no calculo do consenso."
+        )
+        st.dataframe(vizinhos, use_container_width=True, hide_index=True)
 
 
 def tela_chat(motor: MotorDiagnostico) -> None:
@@ -286,29 +463,46 @@ def tela_avaliacao() -> None:
 
     st.markdown(
         "A partição temporal é a medida principal. A aleatória está aqui apenas para mostrar "
-        "o tamanho da ilusão que produz neste conjunto de dados: como cada defeito foi gravado "
-        "num bloco contínuo de tempo, sortear coloca leituras a segundos de distância dos dois "
-        "lados da partição."
+        "o tamanho da ilusão que produz neste conjunto de dados: dentro de cada gravação as "
+        "leituras acontecem a segundos de distância e são quase idênticas, então sortear coloca "
+        "a mesma medição dos dois lados da partição."
     )
     st.markdown(
-        "Cada partição é medida em dois níveis. O **acerto de procedimento** é o que importa "
-        "para o produto: os quatro defeitos de rolamento levam ao mesmo documento e à mesma "
-        "ação corretiva, então trocar anel interno por anel externo não muda uma linha da "
-        "instrução entregue ao técnico."
+        "Cada partição é medida em três níveis. **Documento certo** cobra qual procedimento foi "
+        "entregue a quem vai abrir a máquina — quando o defeito real não tem procedimento "
+        "cadastrado, não existe documento certo e o evento não conta como acerto aqui. "
+        "**Desfecho correto** soma o acerto que não cabe no anterior: o defeito não tem "
+        "procedimento e o sistema não entregou nenhum. **Prescrição indevida** é o erro que o "
+        "enunciado proíbe e que nenhuma métrica de acerto mostra."
     )
+
+    # As chaves vem do avaliacao.json, que e regravado por scripts/evaluate.py.
+    # Ler com .get evita que uma metrica renomeada derrube a tela inteira: o
+    # painel mostra o que existe e avisa o que falta, em vez de KeyError.
+    def _pct(metricas: dict, chave: str) -> str:
+        valor = metricas.get(chave)
+        return f"{valor:.1%}" if isinstance(valor, (int, float)) else "-"
+
     tabela = pd.DataFrame(
         [
             {
                 "Partição": nome,
-                "Acerto de procedimento": f"{m['acuracia_procedimento']:.1%}",
-                "Acerto de rótulo exato": f"{m['acuracia_rotulo']:.1%}",
-                "Taxa de rejeição": f"{m['taxa_rejeicao']:.1%}",
-                "Eventos": m["eventos"],
+                "Rejeição": _pct(m, "taxa_rejeicao"),
+                "Acerto de rótulo": _pct(m, "acuracia_rotulo"),
+                "Documento certo": _pct(m, "acuracia_documento"),
+                "Desfecho correto": _pct(m, "desfecho_correto"),
+                "Prescrição indevida": _pct(m, "prescricao_indevida"),
+                "Eventos": m.get("eventos", "-"),
             }
             for nome, m in avaliacao["splits"].items()
         ]
     )
     st.dataframe(tabela, use_container_width=True, hide_index=True)
+    if tabela.drop(columns=["Partição", "Eventos"]).eq("-").any().any():
+        st.info(
+            "Colunas com `-` não existem no `avaliacao.json` atual. Rode "
+            "`python scripts/evaluate.py` para regravá-lo com as métricas desta versão."
+        )
 
     st.markdown("#### Defeito inédito: a classe some do índice e é consultada")
     st.caption(

@@ -1,0 +1,86 @@
+# Sobe os dois processos da solucao a partir da mesma imagem: a API, que e o
+# contrato com o sistema que ja recebe os eventos dos sensores, e o painel, que
+# e a tela de apresentacao.
+#
+# O Ollama NAO esta aqui de proposito. O modelo precisa da GPU da estacao, e uma
+# GPU exposta a um container e amarracao de plataforma (nvidia-container-toolkit,
+# driver casado com a imagem). Deixando o servico no host, a mesma imagem roda no
+# notebook do avaliador e na estacao industrial; o que muda e uma variavel de
+# ambiente. Ver docs/DEPLOY.md.
+
+name: prescritiva
+
+# Os dois servicos so diferem no comando e nas portas. O bloco comum fica aqui
+# para que uma mudanca de volume nao precise ser lembrada em dois lugares - foi
+# exatamente assim que a base de conhecimento ficaria dessincronizada.
+x-comum: &comum
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: prescritiva:0.1.0
+  restart: unless-stopped
+  # O container ja roda como usuario sem privilegio; isto impede que qualquer
+  # binario dentro dele reconquiste privilegio via setuid.
+  security_opt:
+    - no-new-privileges:true
+  environment:
+    # Dentro do container, localhost e o proprio container: o Ollama do host
+    # ficaria inalcancavel e o motor cairia silenciosamente no gerador
+    # deterministico. host.docker.internal e o nome que o Docker Desktop resolve
+    # para a maquina hospedeira.
+    PRESCRITIVA_LLM_BASE_URL: http://host.docker.internal:11434
+  extra_hosts:
+    # No Docker Desktop o nome ja existe; em Docker Engine sobre Linux, nao.
+    # Esta linha faz o mesmo compose funcionar nos dois - e o caso da estacao
+    # industrial, que provavelmente nao roda Desktop.
+    - "host.docker.internal:host-gateway"
+  volumes:
+    # Artefatos construidos pelos scripts. Entram por volume, e nao na imagem,
+    # para que reconstruir o indice nao exija reconstruir a imagem e para que o
+    # dado historico da planta nunca vire camada distribuivel.
+    - ./data/index:/app/data/index
+    - ./data/processed:/app/data/processed
+    # docs e knowledge sao gravaveis: e por eles que o cadastro de um novo
+    # procedimento persiste. Sem knowledge montado, o cache de OCR se perderia a
+    # cada restart e o Doc1 escaneado seria reprocessado a ~25 s por pagina.
+    - ./data/docs:/app/data/docs
+    - ./data/knowledge:/app/data/knowledge
+    # Montagem de ARQUIVO, nao de diretorio. Se ele nao existir no host, o Docker
+    # cria um DIRETORIO com esse nome e o SQLite falha com "unable to open
+    # database file". Rode scripts/ingest.py antes do primeiro up.
+    - ./data/prescritiva.db:/app/data/prescritiva.db
+
+services:
+  api:
+    <<: *comum
+    container_name: prescritiva-api
+    ports:
+      - "8000:8000"
+
+  painel:
+    <<: *comum
+    container_name: prescritiva-painel
+    # O painel importa o motor em processo, nao consome a API por HTTP. Por isso
+    # nao ha depends_on: um gate de saude aqui esconderia a mensagem que o
+    # proprio Streamlit ja da quando os indices faltam, que e o diagnostico util.
+    command:
+      - streamlit
+      - run
+      - app/streamlit_app.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+      - --server.headless=true
+      # Sem isto o Streamlit recusa requisicoes vindas do mapeamento de porta.
+      - --server.enableXsrfProtection=false
+    ports:
+      - "8501:8501"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=8)
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3

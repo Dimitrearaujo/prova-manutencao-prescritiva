@@ -8,9 +8,8 @@
 # termo_chave  exigencia. Todos os radicais precisam estar no escopo do
 #              documento (titulo + objetivo), senao o documento nem disputa.
 #              E o que impede uma mencao solta de virar cobertura: o
-#              procedimento de rolamentos cita "ventiladores" na lista de
-#              equipamentos, e sem essa regra uma falha de ventoinha pareceria
-#              documentada.
+#              procedimento de rolamentos cita acoplamento, polia e correia
+#              entre causas e sintomas, e nao trata de nenhum dos tres.
 # termos_busca contexto. Desempata entre procedimentos que citam o mesmo
 #              componente e alimenta a recuperacao de trechos.
 #

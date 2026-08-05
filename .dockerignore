@@ -1,0 +1,35 @@
+# Contexto de build. Tudo que esta aqui e enviado ao daemon antes da primeira
+# instrucao rodar, entao o que nao for necessario para construir a imagem custa
+# tempo em toda build.
+
+# Ambiente virtual do host: tem binarios de Windows e quebraria a imagem Linux
+# se vazasse para dentro dela.
+.venv/
+venv/
+
+.git/
+.gitignore
+.github/
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+build/
+dist/
+
+# Dados e artefatos derivados: ~85 MB entre o CSV bruto, o banco, o indice e os
+# PDFs. Nada disso entra na imagem - tudo chega por volume em tempo de
+# execucao, o que mantem a imagem imutavel e o dado da planta fora dela.
+data/
+
+.env
+*.log
+
+# Documentacao e o proprio deploy: nao participam da execucao da aplicacao.
+docs/
+README.md
+Dockerfile
+docker-compose.yml
+.dockerignore

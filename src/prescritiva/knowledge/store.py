@@ -7,10 +7,19 @@ Duas buscas distintas convivem aqui, de proposito diferente:
 - busca de cobertura, restrita ao ESCOPO de cada documento (titulo e objetivo),
   para decidir se o defeito e coberto por algum procedimento.
 
-A separacao existe porque uma mencao solta engana. O procedimento de rolamentos
-cita "ventiladores" na lista de equipamentos onde rolamentos sao criticos; se a
-cobertura fosse decidida no corpo, uma falha de ventoinha pareceria documentada
-e o sistema entregaria instrucao errada com cara de certeza.
+A separacao existe porque titulo declara o que o documento TRATA e corpo apenas
+MENCIONA. Um procedimento de rolamentos cita acoplamento, polia e correia entre
+as causas e os sintomas; decidir cobertura por presenca no corpo faria a falha
+desses componentes parecer documentada por um procedimento que nao os trata.
+
+Honestidade sobre o tamanho do efeito NESTE acervo: rodando a mesma regra sobre
+o corpo, o mapa dos onze defeitos sai identico - os seis procedimentos sao
+monotematicos e nomeiam o componente no titulo, entao nao ha caso onde as duas
+regras discordem. A escolha pelo escopo nao corrige um erro observado aqui: ela
+protege a propriedade que precisa continuar valendo quando o acervo crescer, que
+e justamente o que o cadastro de documento novo permite. Um manual generico, ou
+um procedimento longo que discuta varios componentes, quebraria a regra do corpo
+e nao quebra a do escopo.
 """
 
 from __future__ import annotations

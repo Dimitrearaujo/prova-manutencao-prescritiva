@@ -7,15 +7,20 @@ frequencia de pico  tem apenas 14 e 19 valores distintos, com 61 Hz respondendo
                     por 61% das linhas, inclusive nos 347 registros de motor
                     desligado. Vibracao rotacional nao existe com o motor parado,
                     entao 61 Hz e a frequencia da rede eletrica, nao uma medicao
-                    do defeito. Como o RobustScaler divide por um IQR de 1.25, um
-                    deslocamento de 73 Hz entre coletas vira 58 unidades de
-                    distancia e domina o vizinho.
+                    do defeito. O IQR com que o RobustScaler divide essa coluna
+                    varia de 1.0 a 44.0 conforme o regime - coluna que mede
+                    defeito nao muda de escala assim -, e onde ele e pequeno a
+                    amplitude da coluna vale ate 52 unidades de distancia contra
+                    as 2.1 que separam dois eventos parecidos: um deslocamento
+                    entre coletas domina o vizinho sozinho.
 
-temperatura         correlaciona com a posicao dentro do bloco de gravacao entre
-                    0.50 e 0.93, subindo em alguns blocos e caindo em outros, o
-                    que e aquecimento e resfriamento ambiente, nao fisica de
-                    falha. Separa mal: a variacao entre defeitos (1.18 C) e menor
-                    que a variacao dentro de cada defeito (1.63 C).
+temperatura         correlaciona com a posicao dentro do bloco de gravacao de
+                    0.01 a 0.93, subindo em alguns blocos e caindo em outros, e
+                    os sete blocos acima de 0.80 sao todos da segunda rodada de
+                    gravacao - aquecimento e resfriamento da sessao, nao fisica
+                    de falha. Separa mal: agrupando pelo rotulo normalizado, a
+                    variacao entre defeitos (1.18 C) e menor que a variacao
+                    dentro de cada defeito (1.63 C).
 """
 
 from __future__ import annotations

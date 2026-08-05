@@ -51,3 +51,26 @@ llm:
   # Folgado de proposito: a primeira chamada carrega o modelo do disco e pode
   # levar mais de um minuto em maquina sem GPU.
   timeout_s: 300
+
+# Integracao por fila com o chao de fabrica. O endereco do broker pode ser
+# sobrescrito por PRESCRITIVA_MQTT_HOST, porque ele e da instalacao e nao da
+# solucao.
+mqtt:
+  host: localhost
+  port: 1883
+  keepalive_s: 60
+  # Topicos separados por proposito. Diagnostico e erro de integracao nao podem
+  # sair pelo mesmo canal: quem consome precisa distinguir "nao reconheci o
+  # padrao", que e resposta, de "nao entendi a mensagem", que e defeito de quem
+  # publicou.
+  topico_entrada: planta/vibracao/eventos
+  topico_saida: planta/vibracao/diagnosticos
+  topico_erros: planta/vibracao/diagnosticos/erros
+  # Entrega ao menos uma vez. Numa planta, receber o mesmo diagnostico duas
+  # vezes custa pouco; perder um custa uma parada nao explicada.
+  qos: 1
+  # Fixo de proposito: com sessao persistente, e o client_id que faz o broker
+  # guardar as mensagens enquanto o servico esta reiniciando.
+  client_id: prescritiva-consumidor
+  reconexao_min_s: 1
+  reconexao_max_s: 60

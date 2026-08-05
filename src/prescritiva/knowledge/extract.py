@@ -109,7 +109,19 @@ def extract_document(
 def extract_all(
     docs_dir: Path, cache_dir: Path, *, dpi: int = 300, min_confidence: float = 0.5
 ) -> list[ExtractedDocument]:
-    return [
-        extract_document(pdf, cache_dir, dpi=dpi, min_confidence=min_confidence)
-        for pdf in sorted(docs_dir.glob("*.pdf"))
-    ]
+    """Extrai o diretorio inteiro, isolando o documento que falhar.
+
+    Um arquivo ilegivel derruba apenas a si mesmo. Deixar a excecao subir
+    matava o lote inteiro e, como o arquivo permanece no diretorio varrido pelo
+    glob, toda reindexacao seguinte morria no mesmo ponto: o cadastro de
+    procedimentos ficava inoperante ate alguem apagar o arquivo no servidor.
+    """
+    documentos: list[ExtractedDocument] = []
+    for pdf in sorted(docs_dir.glob("*.pdf")):
+        try:
+            documentos.append(
+                extract_document(pdf, cache_dir, dpi=dpi, min_confidence=min_confidence)
+            )
+        except Exception:  # noqa: BLE001 - PDF corrompido, cache invalido ou falha de OCR
+            logger.exception("ignorando %s: nao foi possivel extrair o texto", pdf.name)
+    return documentos

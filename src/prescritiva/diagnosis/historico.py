@@ -9,6 +9,7 @@ de operacao tem orcamento de RAM fixo e o volume historico so cresce.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -27,7 +28,13 @@ class EstatisticaHistorica:
 
 
 def estatisticas(database: Path, fault: str) -> EstatisticaHistorica:
-    with sqlite3.connect(database) as conn:
+    # `closing` e nao `with sqlite3.connect(...)`: o gerenciador da propria
+    # conexao confirma a transacao mas NAO fecha o descritor. Aqui a funcao roda
+    # uma vez por diagnostico, entao um servico no ar por meses acumularia um
+    # descritor por evento ate cair. Mesmo contrato de
+    # integracao/repositorio.py::_conectar, sem o segundo gerenciador porque
+    # nao ha escrita para confirmar.
+    with closing(sqlite3.connect(database)) as conn:
         conn.row_factory = sqlite3.Row
         total, primeira, ultima = conn.execute(
             "SELECT COUNT(*), MIN(created_at), MAX(created_at) FROM eventos WHERE fault = ?",

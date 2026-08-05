@@ -1,9 +1,14 @@
 """Particoes de treino e teste.
 
-O ensaio gravou um defeito de cada vez, em blocos continuos de tempo. Isso torna
-o sorteio aleatorio invalido: leituras a segundos de distancia caem nos dois
-lados e a mesma medicao aparece no treino e no teste com outro carimbo de hora.
-Todas as particoes honestas deste projeto respeitam o tempo.
+O ensaio gravou um defeito de cada vez e, dentro de cada gravacao, as leituras
+acontecem a segundos de distancia e sao quase identicas. E isso que invalida o
+sorteio aleatorio: a mesma medicao cai nos dois lados da particao, com outro
+carimbo de hora.
+
+Os blocos nao sao disjuntos entre si - scripts/eda.py reporta 16 dos 26 blocos
+brutos com sobreposicao temporal, porque alguns defeitos foram retomados semanas
+depois - e o argumento nao precisa que sejam: split_temporal corta DENTRO de
+cada bloco. Todas as particoes honestas deste projeto respeitam o tempo.
 """
 
 from __future__ import annotations
@@ -27,6 +32,11 @@ def split_temporal(
     tempo sao quase identicas: sem ele, a ultima linha do treino e a primeira do
     teste sao a mesma medicao.
 
+    O agrupamento e por `fault_original`, o bloco de gravacao com o sufixo de
+    campanha, porque e ele que delimita a sessao contigua. Agrupar pelo rotulo ja
+    normalizado juntaria duas sessoes separadas por semanas, e o corte
+    cronologico jogaria a segunda inteira para o teste.
+
     E a particao que representa o uso real: reconhecer um defeito ja visto, a
     partir de uma leitura posterior da mesma operacao.
     """
@@ -46,6 +56,11 @@ def split_campanha(eventos: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     E um teste de estresse, nao a metrica principal: mede o que acontece quando a
     instrumentacao e recalibrada entre coletas. O teste fica restrito aos
     defeitos que a primeira campanha conhece.
+
+    A separacao nao e perfeitamente cronologica: 7.207 eventos da primeira
+    campanha, todos de desalinhado e desbalanceado_1parafuso, foram gravados
+    depois do inicio da segunda - medido em scripts/eda.py. Para essas duas
+    classes a queda de desempenho nao pode ser lida so como deriva no tempo.
     """
     treino = eventos[eventos["campanha"] == 1]
     teste = eventos[(eventos["campanha"] > 1) & eventos["fault"].isin(treino["fault"].unique())]
