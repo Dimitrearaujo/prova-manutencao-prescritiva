@@ -200,3 +200,50 @@ def test_diagnostico_sempre_expoe_as_evidencias(motor, eventos):
     assert diagnostico.similaridade["vizinhos"]
     for vizinho in diagnostico.similaridade["vizinhos"]:
         assert {"id", "fault", "created_at", "distancia"} <= vizinho.keys()
+
+
+def test_preparar_prescricao_reproduz_a_mesma_recuperacao(motor, eventos):
+    """`scripts/comparar_modelos.py` usa este metodo para nao reconstruir a
+    busca por conta propria. A garantia e que ele devolve exatamente o que
+    `_defeito()` já usou para montar o diagnostico original - mesmo documento,
+    mesmas secoes, mesmo texto de prompt - e nao uma segunda opiniao.
+    """
+    diagnostico = _primeiro_com_desfecho(motor, eventos, "desalinhado", "defeito_documentado")
+
+    trechos, pergunta = motor.preparar_prescricao(diagnostico)
+
+    assert trechos
+    assert {t.documento for t in trechos} == {diagnostico.cobertura["documento"]}
+    assert [t.secao for t in trechos] == [t["secao"] for t in diagnostico.trechos]
+    assert diagnostico.rotulo in pergunta
+    assert "TRECHOS DO PROCEDIMENTO" in pergunta
+
+
+@pytest.mark.parametrize(
+    "desfecho", ["defeito_sem_documentacao", "estado_operacional", "padrao_desconhecido"]
+)
+def test_preparar_prescricao_recusa_desfecho_sem_procedimento(motor, eventos, desfecho):
+    """Chamar para um desfecho sem procedimento e erro de quem chama.
+
+    Nao existe trecho nem prompt para recuperar sem documento, entao o metodo
+    recusa alto e claro em vez de devolver uma busca vazia silenciosa.
+    """
+    if desfecho == "defeito_sem_documentacao":
+        diagnostico = _primeiro_com_desfecho(motor, eventos, "ventoinha", desfecho)
+    elif desfecho == "estado_operacional":
+        diagnostico = _primeiro_com_desfecho(motor, eventos, "motor_desligado", desfecho)
+    else:
+        diagnostico = motor.diagnosticar(
+            {
+                "rpm": 1000.0, "z_rms_velocity_mm_s": 900.0, "x_rms_velocity_mm_s": 850.0,
+                "temperature_c": 240.0, "z_peak_acceleration_g": 400.0, "x_peak_acceleration_g": 380.0,
+                "z_peak_vel_comp_freq_hz": 61.0, "x_peak_vel_comp_freq_hz": 61.0,
+                "z_rms_acceleration_g": 300.0, "x_rms_acceleration_g": 290.0,
+                "z_kurtosis": 90.0, "x_kurtosis": 88.0, "z_crest_factor": 70.0, "x_crest_factor": 68.0,
+                "z_peak_velocity_mm_s": 950.0, "x_peak_velocity_mm_s": 940.0,
+                "z_high_freq_rms_accel_g": 200.0, "x_high_freq_rms_accel_g": 210.0,
+            }
+        )
+
+    with pytest.raises(ValueError, match="defeito_documentado"):
+        motor.preparar_prescricao(diagnostico)

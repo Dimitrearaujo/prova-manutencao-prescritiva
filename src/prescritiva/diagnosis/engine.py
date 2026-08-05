@@ -289,15 +289,8 @@ class MotorDiagnostico:
                 **base_diagnostico,
             )
 
-        trechos = self.base.buscar(
-            f"{rotulo} {entrada['termos_busca']}",
-            top_k=self.top_k,
-            documento=cobertura.documento,
-            preferir_secoes=SECOES_DE_ACAO,
-        )
-        instrucoes, gerador = self._gerar_com_fallback(
-            INSTRUCAO, montar_pergunta(rotulo, estatistica, trechos)
-        )
+        trechos, pergunta = self._recuperar_trechos_e_pergunta(fault, cobertura.documento, estatistica)
+        instrucoes, gerador = self._gerar_com_fallback(INSTRUCAO, pergunta)
 
         return Diagnostico(
             situacao="defeito_documentado",
@@ -310,6 +303,49 @@ class MotorDiagnostico:
             instrucoes=instrucoes,
             gerador=gerador,
             **base_diagnostico,
+        )
+
+    def _recuperar_trechos_e_pergunta(
+        self, fault: str, documento: str, estatistica: EstatisticaHistorica
+    ) -> tuple[list[TrechoRecuperado], str]:
+        """Recupera os trechos do procedimento e monta o prompt para um defeito ja coberto.
+
+        Unico ponto que decide COMO buscar (quais termos, que documento, quais
+        secoes preferir) para gerar uma prescricao. `_defeito()` usa isto para
+        montar o diagnostico; `preparar_prescricao()` expoe o mesmo caminho para
+        quem precisa regenerar a partir de um diagnostico ja aprovado, como
+        `scripts/comparar_modelos.py` - um portao novo que entre aqui vale para
+        os dois sem precisar lembrar de replicar a busca em cada lugar que gera
+        texto.
+        """
+        entrada = self.catalogo[fault]
+        trechos = self.base.buscar(
+            f"{entrada['rotulo']} {entrada['termos_busca']}",
+            top_k=self.top_k,
+            documento=documento,
+            preferir_secoes=SECOES_DE_ACAO,
+        )
+        return trechos, montar_pergunta(entrada["rotulo"], estatistica, trechos)
+
+    def preparar_prescricao(self, diagnostico: Diagnostico) -> tuple[list[TrechoRecuperado], str]:
+        """Trechos e prompt para um diagnostico ja aprovado pelos tres portoes.
+
+        Exige `situacao == "defeito_documentado"`: os outros tres desfechos nao
+        tem procedimento para recuperar, e chamar aqui para eles e erro de quem
+        chama, nao caso a tratar. `_defeito()` chega ate aqui internamente para
+        montar a prescricao original; este metodo existe para quem quer refazer
+        a busca e a geracao depois - hoje so `scripts/comparar_modelos.py`, para
+        comparar geradores no mesmo caso real sem reconstruir a consulta por
+        conta propria.
+        """
+        if diagnostico.situacao != "defeito_documentado" or diagnostico.fault is None:
+            raise ValueError(
+                "preparar_prescricao exige um diagnostico defeito_documentado, "
+                f"recebeu situacao={diagnostico.situacao!r}"
+            )
+        estatistica = estatisticas(self.database, diagnostico.fault)
+        return self._recuperar_trechos_e_pergunta(
+            diagnostico.fault, diagnostico.cobertura["documento"], estatistica
         )
 
     def perguntar(self, pergunta: str, *, documento: str | None = None) -> dict[str, Any]:

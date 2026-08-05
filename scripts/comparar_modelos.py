@@ -16,13 +16,7 @@ import time
 import pandas as pd
 
 from prescritiva.config import load_settings
-from prescritiva.diagnosis.engine import (
-    INSTRUCAO,
-    SECOES_DE_ACAO,
-    MotorDiagnostico,
-    montar_pergunta,
-)
-from prescritiva.diagnosis.historico import estatisticas
+from prescritiva.diagnosis.engine import INSTRUCAO, MotorDiagnostico
 from prescritiva.llm.deterministico import GeradorDeterministico
 from prescritiva.llm.ollama_client import OllamaGerador
 
@@ -59,16 +53,11 @@ def main() -> None:
     if diagnostico is None:
         print(f"nenhuma amostra de {DEFEITO_DEMO} chegou a prescricao; nada a comparar")
         return
-    entrada = motor.catalogo[diagnostico.fault]
-    trechos = motor.base.buscar(
-        f"{entrada['rotulo']} {entrada['termos_busca']}",
-        top_k=settings.knowledge["retrieval_top_k"],
-        documento=diagnostico.cobertura["documento"],
-        preferir_secoes=SECOES_DE_ACAO,
-    )
-    pergunta = montar_pergunta(
-        entrada["rotulo"], estatisticas(settings.paths.database, diagnostico.fault), trechos
-    )
+    # A busca e o prompt vem de `preparar_prescricao`, o mesmo caminho que o
+    # motor usa para montar a prescricao original: reconstrui-los aqui por
+    # conta propria faria um portao novo dentro de `_defeito()` valer para o
+    # diagnostico e nao para esta comparacao.
+    trechos, pergunta = motor.preparar_prescricao(diagnostico)
 
     print(f"defeito diagnosticado: {diagnostico.rotulo}")
     print(f"procedimento: {diagnostico.cobertura['documento']}")
