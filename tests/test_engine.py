@@ -187,9 +187,12 @@ def test_pergunta_sem_procedimento_nao_inventa_resposta(motor):
     do teste.
     """
     resultado = motor.perguntar("como calibrar o sensor de pressao da caldeira a vapor?")
-    assert resultado["situacao"] == "fora_de_escopo"
+    assert resultado["situacao"] == "sem_defeito_nomeado"
     assert not resultado["trechos"]
-    assert "nenhum procedimento" in resultado["resposta"].lower()
+    # A recusa precisa dizer o que falta e o que existe. "Reformule" sozinho
+    # devolve o problema ao tecnico sem dizer para onde reformular.
+    assert "nao nomeia nenhum defeito" in resultado["resposta"].lower()
+    assert "ha procedimento para" in resultado["resposta"].lower()
 
 
 def test_diagnostico_sempre_expoe_as_evidencias(motor, eventos):

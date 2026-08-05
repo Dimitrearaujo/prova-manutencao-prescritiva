@@ -325,32 +325,67 @@ Toda resposta vem com os trechos que a originaram, para conferência.
 
 **As camadas 2 e 3 valem também no chat**, e é aí que está a parte não óbvia. A
 consulta livre não tem diagnóstico e por isso não tem defeito a partir do qual
-resolver a cobertura. O mecanismo é outro, em três critérios:
+resolver a cobertura. A regra que resolve isso cabe numa frase:
 
-- **catálogo → cobertura.** A pergunta é casada contra o catálogo de defeitos
-  pela mesma exigência de radicais que a cobertura usa contra o escopo do
-  documento. Se ela nomeia um defeito que nenhum procedimento cobre, a resposta é
-  a mesma recusa do diagnóstico, com pedido de cadastro, **e o modelo não é
-  chamado**. Se o defeito nomeado é coberto, o contexto fica restrito ao documento
-  que o cobre — a camada 3, no chat.
-- **piso de aderência.** Para a pergunta que não nomeia defeito nenhum, o melhor
-  trecho precisa passar de um piso de BM25. O filtro anterior era `score > 0`, que
-  não filtra nada: qualquer palavra em comum com o corpus devolvia trecho, e o
-  modelo escrevia procedimento em cima dele.
-- **concentração.** Os trechos precisam vir do **mesmo** documento. Resposta
-  montada com pedaço de três procedimentos diferentes é o sintoma de que nenhum
-  deles trata do assunto.
+> **O catálogo decide SE o chat responde e quais procedimentos são candidatos; a
+> aderência do texto só escolhe entre candidatos — nunca cria um.**
+
+Daí saem as saídas que não chamam o modelo:
+
+- **defeito nomeado sem procedimento.** Mesma recusa do diagnóstico, com pedido de
+  cadastro. É a dupla obrigação que o enunciado escreve com todas as letras:
+  reportar que o problema ainda não existe **e** sugerir registrar um documento.
+- **nenhum defeito nomeado.** Não há o que ancorar. A recusa lista os defeitos que
+  hoje têm procedimento, derivada da cobertura em tempo real — cadastrar um
+  documento novo muda a resposta sozinho.
+- **fenômeno que pertence a mais de um defeito.** "Excentricidade" é do rotor, que
+  não tem procedimento, ou da polia, que tem — o Doc5 dedica a ela a seção 3.1.
+  Citar o fenômeno sem dizer o componente deixa a pergunta indecidível, e a
+  indecisão vira pergunta de volta ao técnico em vez de palpite.
+- **restrição incompatível.** O combo "Restringir a um procedimento" da tela pode
+  **estreitar** o que o catálogo aprovou; nunca criar aprovação.
 
 O chat também usa uma instrução própria. A do diagnóstico manda o modelo não
 rediscutir um defeito que "já foi determinado pela análise de similaridade" — numa
 consulta livre não existe diagnóstico nenhum, e a frase convidava o modelo a
 assumir um defeito que ninguém determinou.
 
-Sem esses três critérios, perguntar "como corrigir rotor excêntrico?" devolvia
-trechos do Doc6 (rotor inclinado) e o modelo escrevia passos de correção para o
-defeito que o próprio sistema classifica como sem procedimento cadastrado — a
-solução recusando prescrever numa aba e prescrevendo na outra, na mesma sessão.
-`tests/test_motor_chat.py` fixa o comportamento.
+### Por que não é um limiar de aderência
+
+Até 2026-08-05 este portão tinha um piso de BM25 (`PISO_SCORE_CHAT = 2.5`) e uma
+exigência de documento único, aplicados só quando a pergunta não nomeava defeito.
+Uma auditoria adversarial de 101 perguntas mediu que **aquele ramo não decidia
+nada**: as distribuições de score de pergunta legítima e de paráfrase de defeito
+sem procedimento se sobrepõem inteiras.
+
+| | ataque | controle |
+|---|---|---|
+| aderência do melhor trecho (mediana) | 6,88 | 7,83 |
+| margem para o segundo documento (mediana) | 1,72 | 1,62 |
+| razão entre primeiro e segundo (mediana) | 1,33 | 1,34 |
+
+Não existe faixa vazia entre os dois grupos, e a varredura de limiar troca
+vazamento por mudez quase de um para um. O piso antigo era pior do que inútil:
+`"como balancear o rotor desbalanceado?"` pontua **2,01 dentro do próprio Doc3**,
+abaixo dele — um piso que emudeceria um caso de teste do próprio projeto.
+
+A causa está visível no acervo. O Doc5 tem a seção **"3.1 Excentricidade"**, que
+abre com *"ocorre quando o centro geométrico da polia não coincide com o centro de
+rotação"*. Uma pergunta sobre excentricidade do **rotor** — defeito que nenhum
+procedimento cobre — casa com esse trecho quase palavra por palavra. O corpo não
+distingue o defeito coberto do defeito homônimo em outro componente. Só o escopo
+distingue, e quem consulta o escopo é o catálogo.
+
+Por isso o piso foi **removido**, e não recalibrado: substituir um número ruim por
+um número melhor manteria o erro de método.
+
+Sem esse portão, perguntar "como corrigir rotor excêntrico?" devolvia trechos do
+Doc6 (rotor inclinado) e o modelo escrevia passos de correção para o defeito que o
+próprio sistema classifica como sem procedimento cadastrado — a solução recusando
+prescrever numa aba e prescrevendo na outra, na mesma sessão.
+`tests/test_motor_chat.py` e `tests/test_auditoria_portao.py` fixam o
+comportamento; `scripts/auditoria_chat.py` refaz a medição e
+`scripts/ablacao_portao.py` mostra quanto cada regra contribui.
 
 **A camada 4 é a mais fraca, e a lista está nessa ordem de propósito.** Ela é uma
 instrução em linguagem natural, não uma garantia, e a medição mostra isso.

@@ -86,13 +86,22 @@ def test_chat_recusa_defeito_sem_procedimento(motor, espiao, pergunta):
     ],
 )
 def test_chat_recusa_assunto_fora_dos_procedimentos(motor, espiao, pergunta):
+    """Sem defeito nomeado nao ha o que ancorar, entao nao ha o que prescrever.
+
+    A recusa mudou de nome junto com o portao. Antes era "fora_de_escopo", que
+    descrevia o resultado de um piso de aderencia; hoje "sem_defeito_nomeado"
+    descreve a causa, e "fora_de_escopo" ficou reservado para o caso em que o
+    defeito foi ancorado e ainda assim nao sobrou trecho.
+    """
     antes = len(espiao.chamadas)
     resultado = motor.perguntar(pergunta)
 
-    assert resultado["situacao"] == "fora_de_escopo"
+    assert resultado["situacao"] == "sem_defeito_nomeado"
     assert not resultado["trechos"]
-    assert "nenhum procedimento" in resultado["resposta"].lower()
     assert len(espiao.chamadas) == antes
+    # Recusa que ensina: diz o que falta na pergunta e o que o sistema cobre.
+    assert "nao nomeia nenhum defeito" in resultado["resposta"].lower()
+    assert "ha procedimento para" in resultado["resposta"].lower()
 
 
 def test_chat_responde_defeito_documentado_com_um_unico_documento(motor, espiao):
@@ -150,3 +159,105 @@ def test_chat_com_documento_escolhido_ainda_passa_pelo_portao(motor, espiao):
 
     assert resultado["situacao"] == "defeito_sem_documentacao"
     assert len(espiao.chamadas) == antes
+
+
+# ---------------------------------------------------------------------------
+# Os tres contornos que a auditoria adversarial encontrou.
+#
+# O portao anterior so barrava a frase literal. scripts/auditoria_chat.py mediu
+# 66 vazamentos em 101 perguntas: bastava parafrasear, ou citar junto um defeito
+# coberto, ou fixar um documento no combo da tela. As perguntas abaixo sao
+# amostras daquele corpus, guardadas aqui para que o buraco nao volte.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "pergunta",
+    [
+        "O rotor esta fora de centro em relacao ao estator. Como corrigir?",
+        "Como corrigir um rotor descentralizado dentro do estator?",
+        "O rotor gira fora de eixo e a corrente oscila a cada volta. Qual o procedimento?",
+        "O ar de refrigeracao caiu e o motor esquenta, tem sujeira acumulada nas pas. Como corrijo?",
+        "A folga entre a parte que gira e a carcaca ta maior de um lado que do outro.",
+        "O motor faz um ronco que vai e volta, tipo pulsando, e a trepidacao acompanha a rotacao.",
+    ],
+)
+def test_chat_nao_prescreve_para_parafrase_de_defeito_sem_procedimento(motor, espiao, pergunta):
+    """Parafrase nao pode virar prescricao.
+
+    O corpo dos procedimentos nao distingue estes casos: o Doc5 tem uma secao
+    "3.1 Excentricidade" sobre excentricidade DA POLIA, e uma pergunta sobre
+    excentricidade do ROTOR casa com ela quase palavra por palavra. Por isso o
+    portao nao pode ser um limiar de aderencia - foi medido que os scores de
+    pergunta legitima e de parafrase se sobrepoem inteiros.
+    """
+    antes = len(espiao.chamadas)
+    resultado = motor.perguntar(pergunta)
+
+    assert resultado["situacao"] != "respondido"
+    assert not resultado["trechos"]
+    assert len(espiao.chamadas) == antes
+
+
+def test_chat_recusa_quando_a_tela_restringe_a_procedimento_incompativel(motor, espiao):
+    """O combo da tela ESTREITA o que o catalogo aprovou; nao cria aprovacao.
+
+    Antes o parametro `documento` entrava direto na busca e, de quebra, fazia a
+    checagem de "trechos do mesmo documento" passar por construcao - filtrar a um
+    documento so deixa um documento so. Era o contorno mais facil de todos.
+    """
+    antes = len(espiao.chamadas)
+    resultado = motor.perguntar("como tensionar a correia?", documento="Doc1")
+
+    assert resultado["situacao"] == "restricao_incompativel"
+    assert not resultado["trechos"]
+    assert len(espiao.chamadas) == antes
+    # A recusa precisa dizer para onde ir, nao so que nao pode.
+    assert "Doc4" in resultado["resposta"]
+
+
+def test_chat_aceita_restricao_compativel(motor):
+    """Contraprova: restringir ao procedimento certo continua funcionando."""
+    resultado = motor.perguntar("como tensionar a correia?", documento="Doc4")
+
+    assert resultado["situacao"] == "respondido"
+    assert resultado["documento"] == "Doc4"
+
+
+def test_chat_com_dois_defeitos_citados_deixa_a_aderencia_escolher(motor):
+    """Quando a pergunta nomeia dois defeitos cobertos, ambos sao candidatos.
+
+    O catalogo decide QUAIS procedimentos entram; a aderencia do texto decide
+    QUAL deles responde. Restringir a um antes de olhar a pergunta seria um
+    palpite tomado cedo demais.
+    """
+    resultado = motor.perguntar("a correia e a polia estao alinhadas? como verifico o canal da polia?")
+
+    assert resultado["situacao"] == "respondido"
+    assert resultado["documento"] in {"Doc4", "Doc5"}
+
+
+def test_resposta_declara_de_que_defeito_e_o_procedimento(motor):
+    """A resposta carrega o defeito do procedimento que ela citou.
+
+    E o que separa "instrucao sem origem" de "instrucao com etiqueta". Quem
+    pergunta citando um defeito coberto recebe o procedimento DELE, e ve isso
+    escrito - inclusive quando o que o tecnico queria era outra coisa.
+    """
+    resultado = motor.perguntar("como corrigir desalinhamento de eixo?")
+
+    assert resultado["situacao"] == "respondido"
+    assert resultado["defeito"] == "Desalinhamento de eixo"
+    assert resultado["documento"] == "Doc2"
+
+
+def test_toda_recusa_traz_os_mesmos_campos_da_resposta(motor):
+    """Contrato estavel: quem consome nao precisa saber qual recusa aconteceu."""
+    chaves = {"situacao", "documento", "defeito", "resposta", "trechos", "gerador"}
+    for pergunta, documento in [
+        ("como corrigir rotor excentrico?", None),
+        ("como trocar o oleo do motor a diesel?", None),
+        ("como tensionar a correia?", "Doc1"),
+        ("como corrigir desalinhamento de eixo?", None),
+    ]:
+        assert set(motor.perguntar(pergunta, documento=documento)) == chaves

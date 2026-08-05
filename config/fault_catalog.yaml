@@ -12,6 +12,22 @@
 #              entre causas e sintomas, e nao trata de nenhum dos tres.
 # termos_busca contexto. Desempata entre procedimentos que citam o mesmo
 #              componente e alimenta a recuperacao de trechos.
+# termos_pergunta  opcional. Outras formas de a PERGUNTA do chat nomear este
+#              defeito, alem do termo-chave. So afeta a consulta livre; nao
+#              participa da cobertura documental nem do diagnostico.
+#
+#              Existe porque o radical corta em seis letras e separa palavras
+#              que o tecnico usa como sinonimo: "balanceamento" vira "balanc" e
+#              "desbalanceamento" vira "desbal"; "cocked rotor" e o nome que o
+#              proprio Doc6 usa no titulo e nao casa com "rotor inclinado". Sem
+#              elas o portao do chat recusava pergunta legitima - medido em
+#              scripts/auditoria_chat.py.
+#
+#              NAO e lista de sinonimos a gosto. tests/test_catalogo_vocabulario.py
+#              exige que cada termo de defeito COBERTO exista no texto do
+#              documento que o cobre, e que cada termo de defeito SEM
+#              procedimento esteja ausente do escopo de todos eles. Termo que
+#              alguem inventou nao entra.
 #
 # tests/test_cobertura.py fixa o resultado esperado desta descoberta.
 
@@ -41,11 +57,23 @@ faults:
     componente: acoplamento
     termo_chave: desalinhamento
     termos_busca: desalinhamento eixo motor acoplamento paralelo angular
+    # "pe manco" aparece 6x no Doc2 e em nenhum outro procedimento: e o nome que
+    # o proprio documento da a base de apoio irregular que se corrige antes de
+    # alinhar. Nao usar "alinhamento": aparece nos seis documentos e nao ancora
+    # nada.
+    termos_pergunta:
+      - pe manco
   desbalanceado_1parafuso:
     rotulo: Desbalanceamento de rotor
     componente: rotor
     termo_chave: desbalanceamento
     termos_busca: desbalanceamento massa rotor forca centrifuga balanceamento
+    # O radical corta em seis letras e "balanceamento" (balanc) nunca casa com
+    # "desbalanceamento" (desbal), embora seja como o tecnico chama a correcao.
+    # "contrapeso" aparece so no Doc3.
+    termos_pergunta:
+      - balanceamento
+      - contrapeso
   correia:
     rotulo: Falha em correia
     componente: transmissao
@@ -61,16 +89,65 @@ faults:
     componente: rotor
     termo_chave: rotor inclinado
     termos_busca: rotor inclinado cocked desvio angular montagem
+    # "cocked rotor" esta no proprio titulo do Doc6 e aparece 6x nele. "batimento
+    # axial" e o indicador que o documento associa a inclinacao, com todas as
+    # letras: "valores elevados de batimento axial normalmente indicam
+    # inclinacao do rotor". O batimento RADIAL nao entra aqui de proposito - ele
+    # e o indicador de excentricidade, que nenhum procedimento cobre.
+    termos_pergunta:
+      - cocked rotor
+      - batimento axial
   eccentric_rotor:
     rotulo: Rotor excentrico
     componente: rotor
     termo_chave: rotor excentrico
     termos_busca: rotor excentrico excentricidade entreferro
+    # Sem procedimento, entao estes termos existem para que a recusa diga QUAL
+    # defeito falta documentar, em vez da recusa generica. "entreferro" e
+    # "estator" nao aparecem em nenhum dos seis documentos - sao a folga entre
+    # rotor e estator, que so faz sentido falando de excentricidade do rotor.
+    #
+    # Cuidado deliberado: "excentricidade" sozinha NAO entra. O Doc5 tem uma
+    # secao "3.1 Excentricidade" sobre excentricidade DA POLIA, que ele cobre;
+    # ancorar a palavra solta aqui faria o sistema recusar uma pergunta legitima
+    # sobre polia. E a mesma licao do acervo inteiro: o defeito e o par
+    # fenomeno + componente, nunca a palavra sozinha.
+    termos_pergunta:
+      - entreferro
+      - excentricidade do rotor
+      - rotor fora de centro
+      - estator
+    # Fenomeno que pertence a ESTE defeito ou a um defeito coberto, conforme o
+    # componente. Sozinho nao decide nada: so deixa passar se o dono legitimo for
+    # nomeado na pergunta. "excentricidade da polia" segue respondendo pelo Doc5;
+    # "corrigi o desalinhamento, sobrou a excentricidade" vira pergunta de qual
+    # componente, em vez de virar o procedimento de desalinhamento.
+    termos_ambiguos:
+      - termo: excentricidade
+        resolvido_por: [polia]
   ventoinha:
     rotulo: Falha em ventoinha
     componente: ventilacao
     termo_chave: ventoinha
     termos_busca: ventoinha pas helice sujeira desbalanceamento
+    # Tambem sem procedimento. "ventoinha" e "helice" nao aparecem em documento
+    # nenhum do acervo - conferido, nao suposto.
+    #
+    # "ventilador" sozinho NAO entra, e a razao e a mesma do rotor excentrico:
+    # o escopo do Doc3 declara cobrir desbalanceamento "incluindo motores
+    # eletricos, ventiladores, rotores, polias"; balancear um ventilador e
+    # pergunta coberta. O que nenhum procedimento cobre e a falha da propria
+    # ventoinha - pa trincada, grade obstruida, perda de vazao.
+    termos_pergunta:
+      - helice
+    # Mesmo mecanismo do rotor excentrico. O escopo do Doc3 declara cobrir
+    # desbalanceamento "incluindo motores eletricos, ventiladores, rotores,
+    # polias" - balancear um ventilador e pergunta coberta, e continua sendo.
+    # O que ninguem cobre e a falha da propria ventoinha, e "ventilador" solto
+    # nao diz qual dos dois o tecnico tem na frente.
+    termos_ambiguos:
+      - termo: ventilador
+        resolvido_por: [desbalanceado_1parafuso]
 
 # Estados de operacao. O enunciado e explicito: nao sao problemas e a solucao
 # nao deve prescrever acao corretiva para eles.

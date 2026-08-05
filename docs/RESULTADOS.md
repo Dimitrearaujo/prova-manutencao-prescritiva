@@ -308,7 +308,91 @@ Base: 6 documentos, 170 trechos.
 
 ---
 
-## 6. O que estes números não dizem
+## 6. Auditoria adversarial do chat
+
+A tabela da seção 5 mede a cobertura a partir do **catálogo**. Ela não mede o que
+acontece quando um técnico digita a pergunta com as palavras dele. Esta seção mede.
+
+**Como o corpus foi feito.** 101 perguntas geradas por três agentes adversariais
+com ângulos distintos — descrever só o sintoma, trocar o componente por sinônimo,
+e atacar a estrutura do portão — e depois **curadas** por revisores que julgaram
+cada uma contra o texto real dos seis procedimentos. A curadoria não foi
+cosmética: **22 das 101 descreviam defeito legitimamente coberto** e viraram
+controle, e **13 ficaram ambíguas** a ponto de nenhum engenheiro decidir sem
+espectro ou medição de entreferro, e foram excluídas dos dois denominadores.
+Reportar contra o corpus bruto teria errado nos dois sentidos.
+
+Restam **66 ataques** (o sistema tem de recusar) e **52 controles** (o sistema tem
+de responder, e pelo procedimento certo). Corpus em
+`tests/dados/corpus_chat_adversarial.json`; `python scripts/auditoria_chat.py`
+refaz a conta em segundos, com um dublê no lugar do modelo.
+
+### Antes e depois
+
+| | portão anterior | portão atual |
+|---|---|---|
+| paráfrase | 12/46 vazaram | **0/32** |
+| seletor da tela | 22/23 vazaram | **0/11** |
+| co-citação | 32/32 vazaram | 16/23 |
+
+*As colunas têm denominadores diferentes porque a coluna da esquerda foi medida
+antes da curadoria, sobre os rótulos do gerador. É o número honesto de cada
+momento; o que se compara entre elas é o mecanismo, não a fração.*
+
+### Os quatro números do portão atual
+
+| | |
+|---|---|
+| vazamento | 16/66 — todos de co-citação |
+| mudez, pergunta bem formada | **1/30** |
+| mudez, pergunta só de sintoma | 17/22 |
+| desvio (respondeu pelo procedimento errado) | 1/52 |
+
+Mudez e desvio saem separados de propósito: o técnico percebe que ficou sem
+resposta e **não** percebe que recebeu o procedimento de outro defeito.
+
+### Ablação do portão
+
+`python scripts/ablacao_portao.py` — cada linha é o portão completo menos uma regra.
+
+| configuração | vazou | calou | desviou |
+|---|---|---|---|
+| portão completo | 16/66 | 17/52 | 1/52 |
+| sem `termos_ambiguos` | 18/66 | 15/52 | 4/52 |
+| sem `termos_pergunta` | 21/66 | 22/52 | 2/52 |
+
+`termos_pergunta` é ganho puro: tirá-lo piora as três colunas. `termos_ambiguos`
+compra 2 vazamentos e 3 desvios a menos por 3 recusas a mais — troca boa, porque
+desvio é o erro invisível.
+
+### O resíduo, declarado
+
+**16 vazamentos, todos de co-citação, e não foram consertados de propósito.** O
+padrão é este: a pergunta nomeia um defeito **coberto**, quase sempre para
+descartá-lo, e descreve sem nomear um defeito sem procedimento — *"já troquei os
+rolamentos dos dois lados e a trepidação continua"*. O sistema responde com o
+procedimento de rolamento.
+
+Ele não inventa texto e não prescreve para o defeito sem documento; entrega o
+procedimento do defeito que a pergunta nomeou, **com a etiqueta dizendo de qual
+defeito ele é** — a tela e a API mostram isso antes das instruções.
+
+Consertar exigiria detectar que o defeito citado foi *descartado* pelo técnico. As
+formas de escrever isso em português não cabem numa lista sem virar o mesmo jogo de
+adivinhação de que este portão acabou de sair. Fica declarado e travado por
+catraca em `tests/test_auditoria_portao.py`, que falha se piorar.
+
+### A mudez de sintoma não é falha do portão
+
+17 dos 22 controles reclassificados descrevem **só o sintoma**, sem nomear defeito:
+*"o motor treme na frequência de giro e o ronco sobe e desce"*. O chat recusa e
+pede o nome do defeito. É o comportamento pretendido: transformar sintoma em
+defeito é trabalho do **caminho do diagnóstico**, que tem o sensor. No chat não há
+sensor, e foi medido nesta mesma seção que a semelhança de palavras não decide.
+
+---
+
+## 7. O que estes números não dizem
 
 **Não medem detecção precoce.** Todos os eventos do conjunto são de defeito já
 instalado ou de operação normal. Não há trajetória de degradação, então não dá

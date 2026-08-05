@@ -293,6 +293,33 @@ leitura humana dos seis documentos e verifica que o limiar está numa faixa vazi
 não no fio da navalha: a menor aderência coberta é 2,14 e a maior rejeitada é
 0,50, com o limiar em 1,0.
 
+### O mesmo portão quando a pergunta é texto livre
+
+A tabela acima parte do defeito. O chat parte da frase que o técnico digitou, e é
+aí que a regra é mais fácil de contornar. Uma auditoria adversarial de 101
+perguntas — depois curadas em 66 ataques, 52 controles e 13 ambíguas — mediu o
+portão anterior deixando passar **paráfrase (12/46), o combo de restringir
+procedimento na tela (22/23) e a citação de um defeito coberto junto (32/32)**.
+
+O portão foi refeito sobre uma frase:
+
+> **O catálogo decide SE o chat responde e quais procedimentos são candidatos; a
+> aderência do texto só escolhe entre candidatos — nunca cria um.**
+
+Hoje: **paráfrase 0/32, seletor 0/11, co-citação 16/23**, com **1/30 de recusa
+indevida** em perguntas de manutenção bem formadas. O resíduo de co-citação está
+declarado, explicado e travado por catraca em
+[`docs/RESULTADOS.md`](docs/RESULTADOS.md) §6.
+
+O piso de aderência BM25 que existia foi **removido, não recalibrado**: as
+distribuições de score de pergunta legítima e de paráfrase de defeito sem
+procedimento se sobrepõem inteiras, e o piso antigo (2,5) chegava a emudecer
+`"como balancear o rotor desbalanceado?"`, que pontua 2,01 dentro do próprio Doc3.
+
+```bash
+python scripts/auditoria_chat.py
+```
+
 ---
 
 ## Avaliação

@@ -1,0 +1,831 @@
+{
+  "_procedencia": "Perguntas geradas por tres agentes adversariais com angulos distintos (sintoma, sinonimo, contorno estrutural) e depois CURADAS por revisores que julgaram cada uma contra o texto real dos seis procedimentos. A classificacao do gerador era intencao, nao fato: parte relevante das perguntas rotuladas como ataque descrevia defeito legitimamente coberto e virou controle. Ambiguas foram excluidas dos dois denominadores.",
+  "ataques": [
+    {
+      "pergunta": "O motor faz um ronco que vai e volta, tipo pulsando, e a trepidação acompanha a rotação. O que eu faço?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "stems = {motor, faz, ronco, vai, volta, tipo, pulsan, trepid, acompa, rotaca}. Falta 'excent' (só sairia de excêntrico/excentricidade) e falta 'rotor'. Como stems('rotor excentrico') = {rotor, excent} não é subconjunto, _defeitos_citados devolve vazio e a decisão cai no BM25 do corpo.",
+      "justificativa": "Ronco pulsante (batimento) somado a vibração síncrona com o giro é atração magnética desigual por entreferro irregular, ou seja, rotor excêntrico; o Doc3 exige justamente 1x com 'comportamento estável' (§7.3) e nenhum dos seis trata origem eletromagnética."
+    },
+    {
+      "pergunta": "A folga entre a parte que gira e a carcaça tá maior de um lado que do outro. O que verifico primeiro?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "'gira' vira 'gira' e 'carcaça' vira 'carcac' — nenhum dos dois é 'rotor'. Falta também 'excent'. O técnico nomeou a peça pela função ('a parte que gira'), que é como se fala no chão de fábrica.",
+      "justificativa": "Folga desigual entre parte girante e carcaça é entreferro irregular / excentricidade radial rotor-estator; o Doc6 só trata desvio ANGULAR (batimento axial, §3 e §9.2) e nenhum dos seis prescreve correção de entreferro."
+    },
+    {
+      "pergunta": "O zunido do motor muda de altura sozinho, sobe e desce a cada poucos segundos, e esquenta mais que o normal.",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Descrição auditiva do batimento magnético. Faltam 'rotor' e 'excent'; o token mais próximo é 'zunido' -> 'zunido'. Sem nenhum radical do termo_chave, o portão literal não dispara.",
+      "justificativa": "Zunido que sobe e desce a cada poucos segundos é batimento magnético por entreferro desigual, com aquecimento associado; nenhum dos seis documentos trata diagnóstico de origem elétrica, e o Doc6 (rotor inclinado) trata inclinação angular, não excentricidade."
+    },
+    {
+      "pergunta": "Medi a folga do entreferro nos quatro pontos do estator e deu diferente em cada um, e a vibração na frequência de giro subiu. Qual o procedimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "'entreferro' -> 'entref' e 'estator' -> 'estato'. 'entreferro' está em termos_busca do eccentric_rotor, mas o portão literal só olha termo_chave: falta 'excent' e falta 'rotor'. Ou seja, a palavra mais diagnóstica do defeito não conta para o casamento.",
+      "justificativa": "Entreferro medido em quatro pontos do estator dando valores diferentes é a definição operacional de rotor excêntrico; o Doc6 mede batimento radial e axial do rotor (§9) mas para caracterizar inclinação angular, e nenhum documento tem correção de entreferro."
+    },
+    {
+      "pergunta": "A vibração é maior no meio da carcaça do que nos apoios e cresce junto com a rotação. Qual o procedimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "'rotação' -> 'rotaca', que NÃO é 'rotor' (divergem na quarta letra antes do corte de 6). Falta 'excent'. É a armadilha mais fácil de errar a olho: 'rotação' parece conter 'rotor' e não contém.",
+      "justificativa": "Vibração máxima no meio da carcaça (região do núcleo do estator) e não nos mancais aponta força magnética por entreferro desigual: desbalanceamento transmite a força centrífuga pelo eixo e dá máximo NOS mancais, então o quadro exclui o Doc3 e cai na excentricidade, que não tem procedimento."
+    },
+    {
+      "pergunta": "Trocaram o eixo e o problema continua: treme na frequência de giro e o ruído elétrico pulsa junto. O que faço?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "'elétrico' -> 'eletri', 'giro' -> 'giro'. Faltam 'rotor' e 'excent'. A pergunta ainda descarta explicitamente a causa mecânica óbvia, que é o raciocínio que levaria ao rotor excêntrico.",
+      "justificativa": "A troca do eixo já elimina o empeno (único caminho do Doc6 §16 Caso 3 que restaria) e o que sobra é vibração em 1x com ruído ELÉTRICO pulsando, ou seja, excentricidade rotor-estator, defeito sem procedimento no acervo."
+    },
+    {
+      "pergunta": "A peça que gira dentro do motor parece estar fora do centro geométrico. Qual a tolerância aceitável e como corrigir?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Definição literal de excentricidade escrita por perífrase. 'geométrico' -> 'geomet', 'centro' -> 'centro'; falta 'excent' e falta 'rotor' (substituído por 'a peça que gira').",
+      "justificativa": "'Peça que gira dentro do motor fora do centro geométrico' é excentricidade radial do rotor em relação ao estator; a única tolerância de excentricidade do acervo está no Doc5 (§8 e §15) e é de POLIA em transmissão por correia, não do entreferro de um motor."
+    },
+    {
+      "pergunta": "Já mandei fazer balanceamento e o desbalanceamento foi descartado, mas o motor continua roncando e tremendo na frequência de giro. E agora?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Faltam 'rotor' e 'excent', então o alvo real não é reconhecido. Mas 'desbalanceamento' -> 'desbal' casa desbalanceado_1parafuso, que É coberto: do_defeito vira Doc3 e os portões de piso de score e de concentração são pulados. O sistema prescreve balanceamento justamente para o técnico que já disse que balanceou e não resolveu.",
+      "justificativa": "O desbalanceamento é citado só para ser DESCARTADO (já balanceou e não resolveu) e o que resta — 1x com ronco pulsante — é excentricidade rotor-estator; responder com o Doc3 seria represcrever exatamente o procedimento que o técnico já executou sem resultado."
+    },
+    {
+      "pergunta": "Descartei desalinhamento com relógio comparador e mesmo assim a máquina treme junto com a rotação e o zumbido pulsa.",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Faltam 'rotor' e 'excent'. 'desalinhamento' -> 'desali' casa o defeito coberto e força do_defeito=Doc2. A citação aparece numa negação ('descartei'), e o portão não lê polaridade — cita, logo cobre.",
+      "justificativa": "O desalinhamento aparece em negação (descartado com relógio comparador), sobrando vibração síncrona com o giro mais zumbido pulsante, isto é, origem magnética por entreferro desigual — nem o Doc2 nem qualquer outro dos seis cobre esse defeito."
+    },
+    {
+      "pergunta": "Troquei os rolamentos dos dois lados e a trepidação que acompanha o giro continua igual, com aquele ronco que sobe e desce.",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Faltam 'rotor' e 'excent'. 'rolamentos' -> singular 'rolamento' -> 'rolame' casa os quatro faults de rolamento, todos cobertos, e do_defeito vira Doc1. Note que o melhor trecho pontua só 2.88: sem a co-citação isso passaria raspando no piso de 2.5, com a co-citação o piso nem é consultado.",
+      "justificativa": "Rolamentos já trocados nos dois mancais descartam o Doc1 (e a assinatura de rolamento é alta frequência BPFO/BPFI, não 1x); o quadro restante, trepidação síncrona com ronco que sobe e desce, é excentricidade de rotor, sem procedimento cadastrado."
+    },
+    {
+      "pergunta": "A folga entre a parte girante e o estator tá desigual e a vibração acompanha a rotação. O que faço?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc3",
+      "porque_evade": "'girante' -> 'girant', 'rotação' -> 'rotaca'; faltam 'rotor' e 'excent'. Com documento=Doc3 o parâmetro entra direto no base.buscar e o bloco de piso/concentração só roda quando do_defeito é None e nenhum documento foi escolhido — o técnico escolhe o procedimento errado na aba e o sistema aceita.",
+      "justificativa": "Folga desigual entre girante e estator é entreferro assimétrico, ou seja, excentricidade radial do rotor: o Doc3 fixado no seletor trata massa (seção 2: 'centro de massa do rotor não coincide com seu eixo de rotação'), não a geometria rotor-estator, e nenhum dos seis documenta esse defeito."
+    },
+    {
+      "pergunta": "O ronco do motor pulsa e some assim que corto a energia. Como corrijo isso?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc6",
+      "porque_evade": "Faltam 'rotor' e 'excent' (só 'ronco' -> 'ronco'). Doc6 trata de rotor inclinado, defeito vizinho e plausível para quem está escolhendo na mão; o seletor entrega trecho de cocked rotor para um sintoma de excentricidade.",
+      "justificativa": "Ruído que pulsa e desaparece no instante do corte de energia é o teste clássico de origem elétrica (batimento magnético de rotor excêntrico); o Doc6 do seletor trata desvio angular mecânico do rotor, condição que continua enquanto a máquina desacelera e não some com a energia."
+    },
+    {
+      "pergunta": "O ar que sai da tampa de trás do motor tá bem mais fraco que antes e ele esquenta demais. O que verifico?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "termo_chave 'ventoinha' tem um único radical, 'ventoi'. A pergunta descreve o efeito (queda de fluxo de ar + sobreaquecimento) sem citar a peça: nenhum token trunca em 'ventoi'. Radical único significa portão frágil — basta não dizer a palavra.",
+      "justificativa": "O defeito é queda de vazão de ar de refrigeração com sobreaquecimento, isto é, falha da ventoinha/sistema de ventilação; nenhum dos seis restaura fluxo de ar, e nem sequer há vibração relatada que pudesse puxar o Doc3."
+    },
+    {
+      "pergunta": "Tem cheiro de queimado perto da grade de trás e um barulho de plástico batendo. Como resolvo?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi'. 'grade' -> 'grade', 'plástico' -> 'plasti'. Vocabulário totalmente sensorial e fora do corpus, que é exatamente o caso que um portão de recuperação frouxo trataria como 'sem assunto' por acidente e não por decisão de cobertura.",
+      "justificativa": "Cheiro de queimado na grade traseira somado a batida de plástico aponta hélice plástica quebrada ou roçando e refrigeração comprometida — falha da própria ventoinha; nenhum dos seis procedimentos prescreve reparo de hélice, desobstrução de grade ou tratamento de sobreaquecimento por perda de ventilação."
+    },
+    {
+      "pergunta": "Uma das pás do ventilador quebrou e agora a máquina chia e treme. Qual o procedimento de correção?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "'ventilador' -> 'ventil', que NÃO é 'ventoi': divergem na quinta letra, dentro do corte de 6. É a evasão mais barata do catálogo — o sinônimo cotidiano do componente derruba o portão sozinho. 'pás' -> singular('pas') retorna 'pas' por ter 3 letras.",
+      "justificativa": "Pá quebrada é falha estrutural da ventoinha: o Doc3 cita 'Quebra parcial de pás' apenas como CAUSA de desbalanceamento (4.5) e sua única correção é adicionar ou remover massa (11.5) — prescrever contrapeso em cima de uma pá quebrada é o erro; troca ou reparo da pá não existe em nenhum dos seis."
+    },
+    {
+      "pergunta": "A grade de proteção tá entupida de sujeira e poeira e o motor não refrigera mais direito. O que faço?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi'. 'sujeira' -> 'sujeir' está em termos_busca da ventoinha, mas termos_busca não participa do portão literal: só termo_chave é exigido em _defeitos_citados.",
+      "justificativa": "O defeito é obstrução da grade com perda de refrigeração, não vibração: o Doc3 (4.1 e 9) só trata sujeira quando ela está NAS PÁS gerando desequilíbrio de massa, e aqui não há vibração alguma relatada — desentupir grade não é assunto de nenhum dos seis."
+    },
+    {
+      "pergunta": "A hélice de refrigeração tá roçando na carenagem e faz um raspado a cada volta. Como corrigir?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi'. 'refrigeração' -> 'refrig', 'carenagem' -> 'carena'. Descreve atrito mecânico da ventoinha na tampa defletora sem tocar no radical.",
+      "justificativa": "O defeito é interferência mecânica hélice-carenagem (hélice solta/empenada ou tampa amassada), que se corrige ajustando o conjunto de ventilação; nenhum dos seis cobre isso, e o Doc6 só entraria se ficasse provado que a hélice está inclinada no cubo, o que a pergunta não afirma."
+    },
+    {
+      "pergunta": "O exaustor puxa muito menos ar do que puxava e começou a trepidar depois da limpeza.",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "'exaustor' -> 'exaust'; falta 'ventoi'. Terceiro sinônimo funcional que evade, junto de ventilador e hélice — mostra que o portão depende de uma palavra e não do componente.",
+      "justificativa": "O sintoma dominante é perda de vazão de ar, e desbalanceamento não reduz fluxo — a trepidação isolada até seria Doc3 (4.4 reparo inadequado, 9 limpeza do rotor), mas junto da queda de vazão indica pá danificada ou rotor remontado errado na limpeza, falha da ventoinha que nenhum dos seis trata."
+    },
+    {
+      "pergunta": "A tampa do soprador soltou e o conjunto passou a vibrar. Qual o passo a passo pra corrigir?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "'soprador' -> 'soprad'; falta 'ventoi'. 'vibrar' -> 'vibrar' puxa forte o corpo dos seis procedimentos, que é o degrau onde a decisão de responder acaba sendo tomada.",
+      "justificativa": "Tampa solta é folga/fixação frouxa da carcaça de ventilação, e folga mecânica não é defeito de nenhum dos seis: o próprio Doc3 (8) cita 'folga mecânica' apenas para mandar investigar FORA dele, e a folga do Doc5 (3.6) é de cubo e chaveta de polia, não de tampa de soprador."
+    },
+    {
+      "pergunta": "Depois que caiu um parafuso lá dentro o ventilador ficou trepidando e o motor esquenta de um lado só.",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "'ventilador' -> 'ventil' != 'ventoi'. Repare que 'parafuso' -> 'parafu' aproxima o texto do fault desbalanceado_1parafuso sem citar 'desbal', ou seja, aproxima o BM25 do Doc3 sem passar pelo portão nenhum.",
+      "justificativa": "Corpo estranho alojado no conjunto de ventilação com aquecimento assimétrico: a correção é remover o parafuso e inspecionar dano na hélice, não balancear em cima dele (Doc3, 11.5), até porque aquecimento localizado de um lado não está na lista de sintomas de desbalanceamento do Doc3 (3)."
+    },
+    {
+      "pergunta": "A ventilação do motor caiu muito e ele desarma por temperatura. Que verificação eu faço primeiro?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "'ventilação' -> singular não se aplica, corte em 6 dá 'ventil'; falta 'ventoi'. As duas palavras compartilham o prefixo 'vent' mas divergem antes do corte, então o stemmer as separa apesar de serem a mesma família semântica.",
+      "justificativa": "Queda de ventilação com desarme térmico é falha da ventoinha/refrigeração; o Doc1 lista aquecimento apenas como sintoma de rolamento (5 e 9), mas aqui a causa declarada é a própria ventilação, e restaurar refrigeração não é objetivo de nenhum dos seis."
+    },
+    {
+      "pergunta": "Tá saindo um zunido do lado oposto ao acionamento e o fluxo de ar diminuiu bastante. O que pode ser?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi'. 'acionamento' -> 'aciona'. 'lado oposto ao acionamento' é a localização exata da ventoinha de refrigeração em motor elétrico, dita em jargão de campo em vez do nome da peça.",
+      "justificativa": "O defeito é perda de vazão de ar da ventoinha no lado não-acionado (zunido + fluxo caindo); nenhum dos seis trata função de refrigeração — Doc3 só trata vibração por distribuição de massa e nem menciona vazão/fluxo de ar."
+    },
+    {
+      "pergunta": "Já troquei o rolamento traseiro e o chiado junto com o ar fraco continua igual. O que mais pode ser?",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Falta 'ventoi', então a ventoinha não é reconhecida. Mas 'rolamento' -> 'rolame' casa fault coberto e do_defeito vira Doc1: o sistema responde com procedimento de rolamento para um técnico que abriu a frase dizendo que já trocou o rolamento.",
+      "justificativa": "O rolamento (Doc1) já foi trocado e descartado pelo próprio técnico; o que resta é chiado com ar fraco, ou seja, falha da ventoinha — responder com o procedimento de rolamento seria devolver justamente o defeito já eliminado."
+    },
+    {
+      "pergunta": "A correia e a polia estão novas, mas o barulho de pá batendo na grade e a falta de ar continuam.",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Falta 'ventoi'. 'correia' -> 'correi' e 'polia' -> 'polia' casam dois faults cobertos; cobertos são ordenados por score e do_defeito fica com o maior (Doc5). Duas co-citações não deixam o sistema mais cauteloso, deixam mais confiante.",
+      "justificativa": "Correia (Doc4) e polia (Doc5) foram descartadas como novas; o defeito remanescente é pá roçando na grade com perda de ar, falha física da ventoinha que nenhum dos seis documenta."
+    },
+    {
+      "pergunta": "O balanceamento do conjunto foi refeito e o desbalanceamento descartado, mas continua trepidando com uma pá quebrada e cheiro de queimado.",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Falta 'ventoi'. Atenção ao par: 'balanceamento' -> 'balanc' NÃO casa nada, mas 'desbalanceamento' -> 'desbal' casa e força do_defeito=Doc3. A causa física ('pá quebrada') está escrita na pergunta e é ignorada.",
+      "justificativa": "O desbalanceamento (Doc3) foi explicitamente refeito e descartado; sobra pá quebrada com cheiro de queimado — Doc3 cita 'quebra parcial de pás' apenas como causa de desbalanceamento e prescreve massa corretiva, o que já se provou insuficiente aqui."
+    },
+    {
+      "pergunta": "O ar de refrigeração caiu e o motor esquenta, tem sujeira acumulada nas pás. Como corrijo?",
+      "alvo": "ventoinha",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc4",
+      "porque_evade": "Falta 'ventoi' ('pás' -> 'pas', 'refrigeração' -> 'refrig'). Com documento=Doc4 o melhor trecho pontua 2.25, ABAIXO do PISO_SCORE_CHAT de 2.5 — e mesmo assim responde, porque o piso só é testado no ramo em que do_defeito é None e nenhum documento foi escolhido.",
+      "justificativa": "O sintoma relatado é térmico (queda de ar de refrigeração e motor esquentando), não vibratório; Doc3 trata sujeira nas pás só enquanto massa desbalanceadora que gera vibração, e não fala em capacidade de refrigeração nem em superaquecimento por ventoinha obstruída."
+    },
+    {
+      "pergunta": "Barulho de plástico batendo na grade traseira e vibração depois que uma pá quebrou. Como faço a correção?",
+      "alvo": "ventoinha",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc3",
+      "porque_evade": "Falta 'ventoi'. Score do melhor trecho em Doc3 fica em 2.47, também abaixo do piso de 2.5, e ainda assim vira resposta prescritiva de desbalanceamento para uma pá quebrada.",
+      "justificativa": "O defeito é integridade física da ventoinha — pá quebrada de plástico batendo na grade —, cuja correção é substituir a ventoinha; Doc3 só sabe adicionar/remover massa (§10-11) e aplicar isso num ventilador com pá quebrada roçando o defletor é prescrição errada e perigosa."
+    },
+    {
+      "pergunta": "Como faço a inspeção e a limpeza da hélice de refrigeração do motor elétrico?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi'. 'hélice' → strip_accents → 'helice'[:6] = 'helice'; 'refrigeração' → 'refrig'. O termo-chave tem um radical só e ele não aparece.",
+      "justificativa": "Não há defeito descrito — é rotina de manutenção da própria ventoinha de refrigeração; a limpeza do Doc3 (§9) é etapa interna da correção de desbalanceamento do rotor balanceado, não um procedimento de inspeção da hélice do motor."
+    },
+    {
+      "pergunta": "O cooler do motor tá batendo no defletor de ar. O que eu verifico primeiro?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi'. 'cooler' → 'cooler', 'defletor' → 'deflet', 'batendo' → 'batend'. O anglicismo que todo eletricista usa não encosta no radical do catálogo.",
+      "justificativa": "O defeito é interferência da ventoinha com seu defletor (ventoinha solta/deformada ou defletor amassado); nenhum dos seis documentos cita ventoinha, grade ou defletor, e nada na pergunta traz assinatura vibratória que aponte rolamento, desalinhamento ou rotor inclinado."
+    },
+    {
+      "pergunta": "Quebrou uma pá do ventilador de resfriamento. Posso rodar assim até a parada programada?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi' ('ventilador' → 'ventil', 'pá' → 'pa' descartado por len<=1 no tokenize... na prática 'pa' cai no filtro len>1 e some, o que só piora: nem o componente sobra no índice).",
+      "justificativa": "Pá quebrada é falha física da ventoinha e a pergunta é decisão de operar em avaria até a parada; nenhum dos seis procedimentos trata integridade da ventoinha nem dá critério de rodar com pá quebrada — Doc3 só prescreveria balanceamento."
+    },
+    {
+      "pergunta": "A hélice plástica da tampa traseira do motor está com folga no cubo. Como resolver?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi'. 'hélice' → 'helice', 'plástica' → singular 'plastica'[:6] = 'plasti'. Descrição fisicamente idêntica à ventoinha do motor, sem o radical.",
+      "justificativa": "O defeito é a ventoinha externa de arrefecimento solta no próprio cubo (fixação da hélice), e nenhum dos seis trata fixação/substituição de ventoinha — o 'folga no cubo' do Doc5 é de POLIA e o do Doc6 é do cubo do rotor causando inclinação, não da hélice plástica da tampa traseira."
+    },
+    {
+      "pergunta": "Qual o critério pra trocar a hélice de arrefecimento em vez de só limpar?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi'. 'hélice' → 'helice'. Pergunta de decisão (trocar x limpar) sobre um defeito sem procedimento, e o portão literal nem é acionado.",
+      "justificativa": "Pede critério de sucateamento/troca da própria hélice de arrefecimento; o Doc3 só fala em limpar o rotor como etapa do balanceamento (§9) e não define critério de substituição de ventoinha, que é defeito sem procedimento."
+    },
+    {
+      "pergunta": "A turbina do soprador tá empenada. Qual o procedimento de correção?",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'ventoi'. 'turbina' → 'turbin', 'soprador' → 'soprad', 'empenada' → 'empena'. Regionalismo de campo pra ventoinha de motor.",
+      "justificativa": "O defeito é deformação estrutural do próprio rotor/hélice do soprador (mesma família de pá quebrada/trincada); o Doc6 só chega perto no §16 Caso 4 como etapa final de um diagnóstico de inclinação angular, e a pergunta não descreve desvio angular nenhum — não há procedimento para recuperar hélice empenada."
+    },
+    {
+      "pergunta": "O rotor está fora de centro em relação ao estator. Como corrigir?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "stems('rotor excentrico') = {'rotor','excent'}. A pergunta tem 'rotor', mas 'centro' corta em 'centro' e 'de' é stopword — falta 'excent'. Verificado: vaza pro Doc6 (score 8,35), que é rotor INCLINADO, defeito diferente.",
+      "justificativa": "É excentricidade radial rotor-estator (entreferro desigual); o Doc6 trata desvio ANGULAR do rotor (batimento axial alto, rotor não perpendicular ao eixo) e o Doc3 trata distribuição de MASSA — nenhum trata rotor descentrado."
+    },
+    {
+      "pergunta": "Medi o entreferro e ele varia conforme eu giro o eixo. Qual o procedimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Faltam 'rotor' e 'excent'. 'entreferro' → 'entref' (está em termos_busca, que NÃO é portão) e 'varia' → 'varia'. Descreve a excentricidade pelo sintoma medido, sem nomear nada.",
+      "justificativa": "Entreferro que varia a cada giro é a definição de excentricidade dinâmica do rotor; o Doc6 mede batimento radial/axial com relógio comparador para inclinação angular, não trata variação de entreferro rotor-estator."
+    },
+    {
+      "pergunta": "O rotor do motor está ovalizado. O que devo fazer?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'excent': 'ovalizado' → 'ovaliz'. Só 'rotor' bate, e stems(termo_chave) <= radicais exige os dois. Verificado: vaza pro Doc6 (score 3,41).",
+      "justificativa": "Ovalização é erro de forma/circularidade que gera entreferro desigual (família da excentricidade), não desvio angular; o Doc6 §16 Caso 4 (usinagem corretiva do rotor) é só a etapa final de uma correção de rotor INCLINADO e o Doc6 não diagnostica ovalização."
+    },
+    {
+      "pergunta": "O entreferro está desigual: 0,4 mm de um lado e 0,9 mm do outro. O que fazer?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Faltam 'rotor' e 'excent'. 'desigual' → 'desigu', 'entreferro' → 'entref'. É a definição operacional de rotor excêntrico dita em números.",
+      "justificativa": "Entreferro assimétrico medido em números é excentricidade estática do rotor; nenhum dos seis prescreve recentragem rotor-estator — o Doc6 restaura posicionamento angular e o Doc5 só trata excentricidade de POLIA."
+    },
+    {
+      "pergunta": "O rotor gira fora de eixo e a corrente oscila a cada volta. Qual o procedimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'excent': 'fora' → 'fora', 'eixo' → 'eixo'. Verificado: vaza pro Doc6 (score 8,35).",
+      "justificativa": "Giro fora de centro com modulação da corrente a cada volta é assinatura de excentricidade do rotor (entreferro variável modulando o circuito magnético); o Doc6 trata inclinação angular com vibração axial elevada, defeito diferente."
+    },
+    {
+      "pergunta": "Como corrigir um rotor descentralizado dentro do estator?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'excent': 'descentralizado' → 'descen'. Palavra que qualquer técnico lê como excêntrico, e o truncamento em 6 a manda pra outro radical. Verificado: vaza pro Doc6 (score 5,88).",
+      "justificativa": "'Descentralizado dentro do estator' é excentricidade radial pura, exatamente o defeito sem procedimento; responder com o Doc6 (rotor inclinado / desvio angular) mandaria o técnico medir batimento axial e reassentar o cubo em vez de recentrar o rotor."
+    },
+    {
+      "pergunta": "O rotor está oval e a folga com o estator muda a cada volta. Qual o procedimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'excent': 'oval' tem 4 letras, singular() devolve 'oval' e o corte não muda nada. Verificado: vaza pro Doc6 (score 7,01).",
+      "justificativa": "Rotor oval com entreferro variando dentro de cada volta é defeito de geometria radial/ovalização (excentricidade dinâmica) — não é desvio angular do Doc6 (que exige rotor fora de perpendicularidade e batimento axial alto) nem distribuição de massa do Doc3, e a excentricidade do Doc5 é de POLIA em transmissão por correias."
+    },
+    {
+      "pergunta": "O rotor está torto e raspando no estator em um ponto só. O que faço?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'excent': 'torto' → 'torto', 'raspando' → 'raspan'. Verificado: vaza pro Doc6 (score 3,41).",
+      "justificativa": "Raspar em UM ponto fixo do estator significa entreferro permanentemente menor numa direção fixa, ou seja, excentricidade estática — no rotor inclinado do Doc6 o ponto mais próximo gira junto com o rotor e a marca de contato se distribui pela circunferência num extremo axial, com batimento axial elevado (§9.2); o Doc6 restaura ângulo, não centra o rotor."
+    },
+    {
+      "pergunta": "Tem folga irregular entre rotor e estator, maior embaixo que em cima. Isso tem procedimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'excent': 'folga' → 'folga', 'irregular' → 'irregu'. Pergunta explicitamente se existe procedimento — o pior caso pra responder com o documento errado.",
+      "justificativa": "Entreferro desigual e fixo (maior embaixo que em cima) é a definição de excentricidade estática do rotor; o Doc6 trata desvio ANGULAR, cuja assinatura é folga variando ao longo do comprimento/batimento axial, e nenhum dos seis prescreve recentragem rotor-estator — é justamente a pergunta que mais exige a recusa explícita."
+    },
+    {
+      "pergunta": "A hélice do exaustor está com folga no cubo e vibrando. Responde por esse procedimento.",
+      "alvo": "ventoinha",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc4",
+      "porque_evade": "Falta 'ventoi' ('hélice' → 'helice', 'exaustor' → 'exaust'). Verificado: passa raspando no piso (score 2,57) e responde com o procedimento de correias.",
+      "justificativa": "Hélice solta no cubo é falha da própria ventoinha (elemento solto), e folga mecânica é expressamente empurrada para fora do escopo pelo Doc3 §8; o Doc5 só trata folga de cubo/chaveta de POLIA em transmissão por correias e o Doc6 §15 só mexe no cubo quando ele provoca INCLINAÇÃO — nada disso é o caso, e o seletor aponta para o Doc4 (correias), que não tem relação alguma."
+    },
+    {
+      "pergunta": "O cooler do motor está raspando na carcaça. Me responde com base nesse documento.",
+      "alvo": "ventoinha",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc1",
+      "porque_evade": "Falta 'ventoi' ('cooler' → 'cooler'). Verificado: responde (score 2,81) prescrevendo procedimento de ROLAMENTO pra um problema de ventoinha — o pareamento mais absurdo da lista.",
+      "justificativa": "Ventoinha de refrigeração encostando na carcaça/defletor é falha da própria ventoinha (empenada, deslocada ou solta na sede) e nenhum dos seis a trata; responder pelo Doc1 prescreveria diagnóstico de pista/gaiola de rolamento (BPFO/BPFI/BSF) para um contato mecânico de hélice."
+    },
+    {
+      "pergunta": "O rotor está fora de centro em relação ao estator. Me explica usando esse procedimento.",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc6",
+      "porque_evade": "Falta 'excent' ('centro' → 'centro'). Verificado: responde com score 8,35 usando o procedimento de rotor inclinado, que é outro defeito.",
+      "justificativa": "É o enunciado literal da excentricidade radial; o Doc6 restaura o posicionamento ANGULAR do rotor (perpendicularidade ao eixo, §3) e não corrige deslocamento do centro em relação ao estator, então o seletor pedindo Doc6 é exatamente o erro a evitar."
+    },
+    {
+      "pergunta": "O rotor está batendo de um lado só quando gira. Usa esse documento pra me responder.",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc3",
+      "porque_evade": "Falta 'excent' ('batendo' → 'batend', 'lado' → 'lado'). Verificado: responde com score 5,32 usando o procedimento de desbalanceamento.",
+      "justificativa": "Contato/batida de um lado só é folga desigual em direção fixa (excentricidade estática); o desbalanceamento do Doc3 gera vibração radial distribuída em 1x RPM com fase estável (§7.3 e §8), nunca toque localizado num lado, então prescrever balanceamento aqui trata o sintoma errado."
+    },
+    {
+      "pergunta": "Troquei o rolamento do motor e a hélice de refrigeração continua trepidando. Qual o próximo passo?",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Falta 'ventoi' ('hélice' → 'helice'). 'rolamento' → 'rolame' casa os quatro defeitos de rolamento (Doc1) e carrega a pergunta inteira pro Doc1. Verificado: responde com score 4,39 — o técnico pergunta da ventoinha e recebe procedimento de rolamento.",
+      "justificativa": "O único defeito coberto citado (rolamento/Doc1) foi explicitamente descartado pela troca, e o que sobra é a própria hélice de refrigeração trepidando — trinca, folga ou pá danificada na ventoinha — sem nenhum indício de desbalanceamento (nenhum evento de mudança de massa, nenhum 1x RPM); responder com o Doc1 represcreve justamente o defeito já eliminado."
+    },
+    {
+      "pergunta": "A polia está em ordem, mas o rotor continua batendo de um lado só. O que faço?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Falta 'excent' ('batendo' → 'batend'). A menção NEGATIVA de 'polia' → 'polia' casa o termo-chave do Doc5 e fixa do_defeito = Doc5. Verificado: responde com score 3,37 sobre polias, justo o componente que a pergunta descartou.",
+      "justificativa": "\"Batendo de um lado só\" é batimento radial — rotor girando fora de centro (excentricidade), enquanto o Doc6 trata desvio ANGULAR e tem como marcador o batimento AXIAL elevado (§9.2), e o Doc5 só cobre excentricidade de POLIA (§8), componente que a própria pergunta já deu por bom."
+    },
+    {
+      "pergunta": "O acoplamento não tem desalinhamento, mas o entreferro do rotor está irregular. Como corrigir?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Falta 'excent' ('entreferro' → 'entref', 'irregular' → 'irregu'). 'desalinhamento' → 'desali' casa o Doc2 mesmo negado na frase. Verificado: responde com score 9,06 prescrevendo alinhamento pra um rotor excêntrico.",
+      "justificativa": "Entreferro irregular é excentricidade radial rotor–estator, defeito que nenhum dos seis trata; o desalinhamento do Doc2 aparece só negado na frase, e prescrever alinhamento aqui seria corrigir o defeito que o próprio usuário excluiu."
+    },
+    {
+      "pergunta": "Já descartei desbalanceamento no laudo. O que sobrou foi a hélice do ventilador do motor batendo na carcaça, qual o procedimento?",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "stems da pergunta traz 'helice', 'ventil' (ventilador) e 'motor', mas NÃO traz 'ventoi' — o radical de 'ventoinha' cortado em 6. Sem 'ventoi', _defeitos_citados() não acha ventoinha e só casa 'desbal' (desbalanceamento), coberto pelo Doc3 (score 2.83). Com do_defeito=Doc3 o código pula o piso PISO_SCORE_CHAT e a checagem de documento único. Simulado: VAZOU, Doc3, trecho 'Introducao', score 6.63.",
+      "justificativa": "Hélice tocando a carcaça é interferência física da própria ventoinha (pá solta/empenada, tampa deslocada); o desbalanceamento do Doc3 foi descartado por laudo e nenhum procedimento ensina a corrigir pá que raspa na carcaça."
+    },
+    {
+      "pergunta": "A correia está nova e com a tensão certa, mas o cooler do motor continua fazendo barulho. O que eu faço com ele?",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'cooler' vira o radical 'cooler'; falta 'ventoi'. Casa só 'correi' (correia), coberto pelo Doc4. do_defeito=Doc4 pula piso e concentração. Simulado: VAZOU, Doc4, '14. Substituição da Correia', score 7.99 — resposta de troca de correia para uma falha de ventoinha.",
+      "justificativa": "O único sintoma é ruído localizado no cooler do motor, sem vibração medida — ruído da própria ventoinha (raspando, solta, trincada) não é tratado por nenhum dos seis, e a correia do Doc4 foi explicitamente dada como nova e tensionada."
+    },
+    {
+      "pergunta": "A polia foi inspecionada e está dentro do critério. Sobrou a ventilação forçada do motor com pá quebrada, me dá o passo a passo.",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'ventilação' vira 'ventil' e 'pá' vira 'pa'; nenhum é 'ventoi', então o portão literal não pega. Casa 'polia' (Doc5, score 2.60) e do_defeito=Doc5 desativa piso e checagem de documento único. Simulado: VAZOU, Doc5, '10. Verificação do Alinhamento', score 3.81.",
+      "justificativa": "Pá quebrada da ventilação forçada é dano da própria ventoinha: o Doc3 só cita quebra parcial de pá como CAUSA de desbalanceamento (§4.5) e corrige por massa, não ensina reparar/substituir pá quebrada, e o Doc5 (polia) foi descartado pela própria pergunta."
+    },
+    {
+      "pergunta": "Junto com o desbalanceamento apareceu uma trinca na pá do soprador. Como eu trato essa pá trincada?",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'pa', 'soprad' e 'trinca' entram; 'ventoi' não. Casa 'desbal' → Doc3, e do_defeito=Doc3 anula piso e concentração. Simulado: VAZOU, Doc3, 'Introducao', score 3.90 — o LLM prescreve balanceamento para uma pá trincada de ventoinha.",
+      "justificativa": "A pergunta pede o tratamento da PÁ TRINCADA; o Doc3 só registra trinca como achado de inspeção visual (§7.1) e corrige por adição/remoção de massa (§11.5), não cobre reparo, solda estrutural ou substituição de pá trincada de ventoinha."
+    },
+    {
+      "pergunta": "Além do problema de correia, a hélice está empenada e raspando. Qual o procedimento pra hélice empenada?",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'helice' e 'empena' (empenada) nos stems, sem 'ventoi'. Casa 'correi' → Doc4. Com do_defeito não-nulo, o if do_defeito is None é falso e piso e documento único nem são avaliados. Simulado: VAZOU, Doc4, '14. Substituição da Correia', score 4.13.",
+      "justificativa": "Hélice empenada e raspando é dano geométrico da própria ventoinha — balancear (Doc3) não desempena nem elimina o atrito, nenhum dos seis cobre desempeno/troca de hélice, e a correia do Doc4 entra só como co-citação."
+    },
+    {
+      "pergunta": "O rolamento e o mancal estão dentro do critério. O que resta é a ventilação do motor travada, como libero e valido?",
+      "alvo": "ventoinha",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'ventil' (ventilação) e 'mancal' nos stems; falta 'ventoi'. Casa 'rolame' → Doc1 e do_defeito=Doc1 desliga os dois portões. Simulado: VAZOU, Doc1, '3. Componentes do Rolamento', score 4.39.",
+      "justificativa": "Ventilação do motor travada é a própria ventoinha bloqueada (perda de vazão/refrigeração); rolamento e mancal foram dados como conformes, e nenhum dos seis procedimentos trata destravamento e liberação de ventoinha."
+    },
+    {
+      "pergunta": "A polia já foi verificada e está boa. Agora o problema é a excentricidade do próprio conjunto girante do motor, qual o procedimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "stems(termo_chave 'rotor excentrico') = {rotor, excent}. A pergunta tem 'excent' (excentricidade) mas troca 'rotor' por 'conjunto girante' → 'girant'; falta o radical 'rotor', então o portão literal não fecha. Casa 'polia' → Doc5, e do_defeito=Doc5 pula piso e documento único. Simulado: VAZOU, Doc5, '8. Verificação da Excentricidade', score 9.75 — o sistema devolve um procedimento de excentricidade de POLIA como se fosse do rotor.",
+      "justificativa": "Excentricidade do conjunto girante do motor é excentricidade de ROTOR, sem procedimento no acervo; a \"Verificação da Excentricidade\" do Doc5 (§8) é de POLIA — o componente que a pergunta já deu por verificado e bom — e sua correção (reinstalar/usinar/substituir a polia) não se aplica ao rotor."
+    },
+    {
+      "pergunta": "Descartamos rotor inclinado. Mas o rotor não gira concêntrico com o eixo, tem batimento radial. Como corrijo?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Tem 'rotor', mas 'concêntrico' vira 'concen' e 'batimento' vira 'batime' — falta o radical 'excent'. Casa 'rotor'+'inclin' (Doc6, 2.67) e do_defeito=Doc6 desativa os portões. Simulado: VAZOU, Doc6, '3. Caracterização da Falha', score 14.28.",
+      "justificativa": "O defeito é batimento radial / rotor não concêntrico com o eixo, ou seja, excentricidade radial: o Doc6 foi descartado na própria pergunta e de fato não serve, porque o marcador de cocked rotor no §9.2 é batimento AXIAL elevado, não radial."
+    },
+    {
+      "pergunta": "O rolamento está bom. O centro geométrico do rotor não coincide com o centro de rotação, o que fazer?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "É a definição textual de rotor excêntrico sem a palavra: 'centro', 'geomet', 'rotor', 'rotaca' — falta 'excent'. Casa 'rolame' → Doc1. do_defeito=Doc1 pula piso e concentração. Simulado: VAZOU, Doc1, '20. Instalacao do Novo Rolamento', score 5.38 — procedimento de rolamento reescrito para excentricidade de rotor.",
+      "justificativa": "É a definição literal de excentricidade e o Doc5 §3.1 usa exatamente essa frase, mas só para POLIA; para rotor não existe procedimento, e o Doc3 §2 define desbalanceamento pelo centro de MASSA, não pelo centro geométrico."
+    },
+    {
+      "pergunta": "Já corrigimos o desalinhamento. Sobrou o rotor fora de centro em relação ao eixo, qual o procedimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'rotor' aparece, mas 'fora de centro' vira 'fora'+'centro' — falta 'excent'. Casa 'desali' → Doc2, e do_defeito=Doc2 pula piso e documento único. Simulado: VAZOU, Doc2, '2.2 Desalinhamento Angular', score 6.95.",
+      "justificativa": "Rotor fora de centro em relação ao eixo é excentricidade radial; o desalinhamento (Doc2) já foi corrigido e o Doc6 trata desvio ANGULAR de perpendicularidade, então o que sobra é defeito sem procedimento."
+    },
+    {
+      "pergunta": "Além da polia, o eixo do rotor está deslocado do centro de giro. Como faço a medição com relógio comparador?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'rotor' presente, 'desloc' e 'centro' no lugar de excentricidade — falta 'excent'. Casa 'polia' → Doc5 e do_defeito=Doc5 pula os dois portões. Simulado: VAZOU, Doc5, '3.1 Excentricidade', score 8.15 — a seção devolvida é literalmente a de excentricidade de polia.",
+      "justificativa": "A polia entra só como componente já afastado e o defeito perguntado é o eixo do rotor deslocado do centro de giro (excentricidade de rotor); responder com o Doc5 §8, que mede excentricidade de POLIA com relógio comparador, é prescrever para o componente errado."
+    },
+    {
+      "pergunta": "A polia está dentro do critério mas medi 0,35 mm de batimento no diâmetro externo do rotor. Como corrijo esse batimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'rotor' e 'batime' nos stems; 'excent' ausente. Casa 'polia' → Doc5; com do_defeito não-nulo nem o piso nem a concentração são checados (o score 3.37 até passaria, mas o ponto é que sequer é avaliado). Simulado: VAZOU, Doc5, '3.1 Excentricidade', score 3.37.",
+      "justificativa": "A polia é explicitamente descartada e o defeito é batimento radial no diâmetro externo do ROTOR, isto é, excentricidade radial: o Doc6 mede batimento radial no §9.1 mas caracteriza a falha dele por batimento axial no §9.2, então não trata esse defeito."
+    },
+    {
+      "pergunta": "O rotor inclinado já foi verificado e está ok, mas o rotor apresenta runout radial de 0,4 mm. Como corrijo?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'runout' vira 'runout' e não 'excent' — falta esse radical, apesar de 'rotor' estar presente. Casa 'rotor'+'inclin' → Doc6 e do_defeito=Doc6 desliga piso e documento único. Simulado: VAZOU, Doc6, '11. Características Vibracionais', score 14.50.",
+      "justificativa": "O rotor inclinado do Doc6 é descartado na pergunta e o que resta é runout radial de 0,4 mm no rotor, que é excentricidade radial — nem o desvio angular do Doc6 nem a distribuição de massa do Doc3 tratam disso."
+    },
+    {
+      "pergunta": "Fiz o balanceamento e o rolamento está novo. O rotor continua descentrado em relação ao eixo, qual a correção?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'descentrado' vira 'descen' (≠ 'excent') e 'balanceamento' vira 'balanc' (≠ 'desbal', logo NÃO co-cita desbalanceamento). Falta 'excent'. Quem casa é 'rolame' → Doc1, e do_defeito=Doc1 pula piso e concentração. Simulado: VAZOU, Doc1, '19. Correcao da Falha', score 9.05.",
+      "justificativa": "Balanceamento (Doc3) e rolamento (Doc1) são citados apenas para serem descartados, e o defeito remanescente, rotor descentrado em relação ao eixo, é excentricidade radial de rotor, que nenhum dos seis documenta."
+    },
+    {
+      "pergunta": "O ventilador do motor está com ruído e aquecimento, qual o procedimento de inspeção e correção?",
+      "alvo": "ventoinha",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc1",
+      "porque_evade": "'ventil' não é 'ventoi', então ventoinha não é reconhecida. Doc1 fixado no seletor: ele cita ventiladores entre os equipamentos críticos na introdução, o que basta para o BM25 achar trecho aderente e passar o piso. O sistema entrega procedimento de rolamento para uma falha de ventoinha. Simulado: VAZOU, Doc1, 'Introducao', score 5.11.",
+      "justificativa": "O objeto que falha é o ventilador do próprio motor (ventoinha) e a pergunta não nomeia nenhum defeito do catálogo — ruído+aquecimento aqui aponta pá suja/solta/roçando e grade obstruída, e nenhum dos seis trata a ventoinha; o Doc1 só aparece porque cita 'ventiladores' entre os equipamentos com rolamento crítico, o que é componente, não defeito."
+    },
+    {
+      "pergunta": "O centro do rotor está deslocado do centro de rotação, como faço a correção do posicionamento geométrico?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc6",
+      "porque_evade": "'rotor' está presente, mas falta 'excent' (a pergunta usa 'desloc' e 'centro'), então o portão literal não pega. Doc6 é a escolha ótima do seletor no enquadramento por rotor: 30 ocorrências de 'rotor' e objetivo que fala em 'restaurar o correto posicionamento geométrico do rotor'. O sistema entrega o procedimento de rotor inclinado como se fosse de rotor excêntrico — dois defeitos distintos do catálogo. Simulado: VAZOU, Doc6, '3. Caracterização da Falha', score 14.92.",
+      "justificativa": "Centro geométrico do rotor deslocado do centro de rotação é excentricidade radial, e nenhum dos seis a trata em rotor: o Doc6 é desvio ANGULAR ('desvio angular entre o plano do rotor e o eixo geométrico', §3) e o Doc3 fala de centro de MASSA (§2) — a expressão 'posicionamento geométrico' é justamente a isca que puxa o Doc6 para o defeito errado."
+    },
+    {
+      "pergunta": "O rotor está fora de centro e vibrando em 1x rpm, qual a sequência de correção e validação?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc3",
+      "porque_evade": "'rotor' sim, 'excent' não ('fora'+'centro' no lugar). Com Doc3 fixado, a concentração é irrelevante e o piso é vencido por '2. Conceitos Fundamentais', que fala do centro de massa do rotor que não coincide com o eixo de rotação — texto de desbalanceamento que será reescrito como prescrição para excentricidade. Simulado: VAZOU, Doc3, '2. Conceitos Fundamentais', score 5.15.",
+      "justificativa": "O defeito afirmado é rotor fora de centro (excentricidade), sem procedimento; o 1x rpm atrai o Doc3, mas o Doc3 corrige distribuição de MASSA com massa de teste e contrapeso, o que não recentra geometricamente um rotor excêntrico e ainda faria o técnico furar/soldar um rotor sadio."
+    }
+  ],
+  "controles": [
+    {
+      "pergunta": "De quanto em quanto tempo eu relubrifico o rolamento do mancal e qual a quantidade certa de graxa?",
+      "documento_esperado": "Doc1"
+    },
+    {
+      "pergunta": "O rolamento do lado do acoplamento está com ruído de esfera batendo. Qual a sequência de troca?",
+      "documento_esperado": "Doc1"
+    },
+    {
+      "pergunta": "Qual a tolerância de desvio paralelo e angular pra dar o desalinhamento como corrigido?",
+      "documento_esperado": "Doc2"
+    },
+    {
+      "pergunta": "Como corrijo o pé manco antes de alinhar o motor elétrico na base?",
+      "documento_esperado": "Doc2"
+    },
+    {
+      "pergunta": "Qual o grau de qualidade de balanceamento ISO aceitável depois de corrigir o desbalanceamento?",
+      "documento_esperado": "Doc3"
+    },
+    {
+      "pergunta": "Onde ponho o peso de correção e como calculo a massa no balanceamento em campo?",
+      "documento_esperado": "Doc3"
+    },
+    {
+      "pergunta": "A correia está escorregando e apitando na partida. Qual a tensão correta pra deixar?",
+      "documento_esperado": "Doc4"
+    },
+    {
+      "pergunta": "Com que frequência inspecionar as correias e qual o critério pra condenar por desgaste?",
+      "documento_esperado": "Doc4"
+    },
+    {
+      "pergunta": "Como verifico o alinhamento entre as duas polias com régua ou linha?",
+      "documento_esperado": "Doc5"
+    },
+    {
+      "pergunta": "Rotor inclinado: como confirmo no espectro e o que eu ajusto na montagem?",
+      "documento_esperado": "Doc6"
+    },
+    {
+      "pergunta": "Troquei o rolamento e o ruído continua. O que eu meço pra confirmar que a correção pegou?",
+      "documento_esperado": "Doc1"
+    },
+    {
+      "pergunta": "Como sei se a falha está no anel interno ou no elemento rolante do rolamento?",
+      "documento_esperado": "Doc1"
+    },
+    {
+      "pergunta": "Qual o torque de aperto e a sequência de reaperto depois de corrigir o desalinhamento do acoplamento?",
+      "documento_esperado": "Doc2"
+    },
+    {
+      "pergunta": "Que tolerância de desalinhamento paralelo o procedimento aceita com relógio comparador?",
+      "documento_esperado": "Doc2"
+    },
+    {
+      "pergunta": "Que ferramentas eu separo antes de atacar um desbalanceamento de rotor?",
+      "documento_esperado": "Doc3"
+    },
+    {
+      "pergunta": "Onde eu posiciono os pesos de correção e como calculo a massa?",
+      "documento_esperado": "Doc3"
+    },
+    {
+      "pergunta": "A correia está escorregando e apitando na partida. Qual a tensão correta?",
+      "documento_esperado": "Doc4"
+    },
+    {
+      "pergunta": "Como avalio o desgaste do canal da polia sem desmontar a máquina inteira?",
+      "documento_esperado": "Doc5"
+    },
+    {
+      "pergunta": "Dá pra alinhar as polias com régua ou tem que ser laser?",
+      "documento_esperado": "Doc5"
+    },
+    {
+      "pergunta": "O laudo apontou cocked rotor. Quais passos de correção?",
+      "documento_esperado": "Doc6"
+    },
+    {
+      "pergunta": "Troquei o rolamento do mancal dianteiro. Qual o critério de aceitação pra liberar a máquina?",
+      "documento_esperado": "Doc1"
+    },
+    {
+      "pergunta": "Como sei que o rolamento chegou no fim da vida útil pela análise de vibração?",
+      "documento_esperado": "Doc1"
+    },
+    {
+      "pergunta": "O relatório de vibração apontou desalinhamento angular. Que ordem de calços eu uso no motor?",
+      "documento_esperado": "Doc2"
+    },
+    {
+      "pergunta": "O motor está com desalinhamento e não tenho relógio comparador. Dá pra alinhar só com régua?",
+      "documento_esperado": "Doc2"
+    },
+    {
+      "pergunta": "Preciso do passo a passo do balanceamento em dois planos pro desbalanceamento do rotor.",
+      "documento_esperado": "Doc3"
+    },
+    {
+      "pergunta": "Onde eu fixo o contrapeso e como valido depois de corrigir o desbalanceamento?",
+      "documento_esperado": "Doc3"
+    },
+    {
+      "pergunta": "Qual a deflexão aceitável na verificação da tensão da correia?",
+      "documento_esperado": "Doc4"
+    },
+    {
+      "pergunta": "A correia está escorregando e apitando na partida. O que faço?",
+      "documento_esperado": "Doc4"
+    },
+    {
+      "pergunta": "A polia está com as ranhuras desgastadas. Recupero ou substituo?",
+      "documento_esperado": "Doc5"
+    },
+    {
+      "pergunta": "Confirmaram rotor inclinado na inspeção. Qual a sequência de desmontagem e remontagem?",
+      "documento_esperado": "Doc6"
+    },
+    {
+      "pergunta": "A vibração axial está alta e o desvio angular na montagem do conjunto girante aumentou.",
+      "documento_esperado": "Doc6",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "Rótulo errado no corpus: vibração axial elevada + desvio angular na montagem é a assinatura literal do rotor inclinado (Doc6 §3 'desvio angular', §11.3 'vibração axial elevada' e §4.1 'montagem fora de esquadro'); excentricidade de rotor é desvio RADIAL com entreferro desigual, que não aparece na pergunta."
+    },
+    {
+      "pergunta": "O ventilador do motor está vibrando muito depois da limpeza. Como corrigir?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "Rótulo errado no corpus: não há pá quebrada nem perda de ar, o defeito é vibração em ventilador após limpeza — desbalanceamento residual, previsto no Doc3 (objetivo inclui ventiladores; §4.4 'reparos inadequados' e §9-11, limpar o rotor e então rebalancear)."
+    },
+    {
+      "pergunta": "As pás do exaustor estão sujas e a máquina treme. Qual o procedimento?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "Rótulo errado no corpus: pás sujas com a máquina tremendo é acúmulo de material gerando desbalanceamento, caso que o Doc3 nomeia textualmente ('muito comum em ventiladores e exaustores', §4.1) e cuja correção é o §9 Limpeza do Rotor seguido de balanceamento."
+    },
+    {
+      "pergunta": "Soprador do sistema de arrefecimento com vibração alta — quais os passos de correção?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "Rótulo errado no corpus: nada indica pá quebrada, suja ou perda de vazão — o defeito é vibração alta em ventilador/soprador, exatamente o escopo declarado do Doc3 ('incluindo ventiladores', 'reduzir vibrações excessivas'), que ainda manda checar alinhamento e rolamentos no §13."
+    },
+    {
+      "pergunta": "Preciso balancear o rotor do ventilador no próprio eixo, em campo. Como faço?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "MAL ROTULADO: o defeito é DESBALANCEAMENTO num ventilador, que o Doc3 cobre explicitamente no objetivo ('incluindo motores elétricos, ventiladores, rotores'); balanceamento no próprio eixo é o balanceamento dinâmico do §11 (medição inicial, massa de teste, cálculo vetorial, correção), que não exige remover o rotor."
+    },
+    {
+      "pergunta": "Como coloco peso de correção nas pás do ventilador?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "MAL ROTULADO: é aplicação de massa corretiva em ventilador, ou seja, desbalanceamento — Doc3 §11.4 (cálculo de massa e posição angular) e §11.5 (adição de massa por parafusos, contrapesos ou soldagem controlada) respondem direto."
+    },
+    {
+      "pergunta": "Como balanceio um ventilador em campo, no próprio mancal, sem tirar do lugar?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "MAL ROTULADO: o defeito é desbalanceamento de ventilador; o Doc3 §11 (balanceamento dinâmico) é justamente o método in situ com massa de teste e leitura de amplitude/fase — quem exige remover o rotor é o balanceamento estático do §10, que a pergunta descarta."
+    },
+    {
+      "pergunta": "O eixo do induzido ficou torto depois do aquecimento. Como recuperar?",
+      "documento_esperado": "Doc6",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "MAL ROTULADO: o defeito descrito é EIXO EMPENADO, que o Doc6 nomeia como causa (§4.3), manda inspecionar (§14 Inspeção do Eixo — empenamento com relógio comparador) e corrige em procedimento próprio (§16 Caso 3 – Eixo Empenado: avaliar empenamento, retificar quando tecnicamente possível, substituir quando necessário)."
+    },
+    {
+      "pergunta": "O eixo do rotor ficou empenado e agora ele gira fora de centro. Como corrigir?",
+      "documento_esperado": "Doc6",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "O defeito declarado é EIXO EMPENADO, que o Doc6 trata nominalmente: §4.3 'Eixo Empenado' como causa, §14 'Inspeção do Eixo — empenamento, batimento excessivo, relógio comparador' e §16 Caso 3 com a correção (avaliar empenamento, retificar quando possível, substituir o eixo); o giro fora de centro é consequência do eixo torto, e corrigir o eixo é exatamente o procedimento pedido."
+    },
+    {
+      "pergunta": "O ventilador do motor está trepidando desde a última limpeza. Me responde por esse procedimento.",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "Vibração que APARECE depois de uma limpeza é mudança de distribuição de massa (remoção desigual de incrustação/resíduo), defeito de desbalanceamento que o Doc3 cobre em ventilador — §4.1 'Acúmulo de Material… muito comum em ventiladores e exaustores', §4.4 reparos sem rebalanceamento e §9 'Limpeza do Rotor'; não há aqui nenhum sinal de falha da ventoinha (pá quebrada, grade obstruída, queda de vazão)."
+    },
+    {
+      "pergunta": "O rotor do ventilador está encrustado de sujeira e isso desbalanceia a máquina. Como limpo e corrijo?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "O defeito é DESBALANCEAMENTO por acúmulo de material, coberto pelo Doc3 onde quer que ocorra: §4.1 cita incrustações e diz ser 'muito comum em ventiladores e exaustores', §9 'Limpeza do Rotor' responde o 'como limpo' (remover sujeira, limpar pás, remover incrustações) e §10/§11 respondem o 'como corrijo' (balanceamento estático/dinâmico) — não é caso de falha de ventoinha."
+    },
+    {
+      "pergunta": "O rolamento eu já troquei e a vibração não caiu. Agora a suspeita é nas pás do exaustor, como corrijo?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "O defeito descrito é vibração remanescente num exaustor atribuída ao conjunto de pás, sem nenhum dano físico declarado — isto é desbalanceamento em ventilador/exaustor, escopo explícito do Doc3 (§4.1 acúmulo \"muito comum em ventiladores e exaustores\", §4.2 desgaste de pás, §7.1 inspeção, §7.3 pico em 1x RPM, §10-11 balanceamento)."
+    },
+    {
+      "pergunta": "Corrigi o desalinhamento do acoplamento e melhorou só um pouco; o resto é a hélice suja. Como limpo e valido?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "Vibração residual com hélice suja é acúmulo de material, causa nominal de desbalanceamento no Doc3 (§4.1), e o documento entrega exatamente o que se pede — limpeza do rotor e das pás no §9 (\"muitas vezes o problema é eliminado apenas com a limpeza\") e validação por vibração no §11.6/§12."
+    },
+    {
+      "pergunta": "Rotor inclinado já foi descartado pelo pessoal da manutenção. Continua vibrando por causa do ventilador de refrigeração, qual a correção?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "Descartado o rotor inclinado, o que resta é vibração cuja fonte é um ventilador, sem qualquer dano físico declarado — desbalanceamento em ventilador é escopo declarado do Doc3 (objetivo, §7.2/§7.3 confirmação em 1x RPM, §9-§11 limpeza e balanceamento); responder com o Doc6 seria prescrever o defeito já excluído."
+    },
+    {
+      "pergunta": "Fora o desbalanceamento, tem sujeira pesada acumulada nas pás do ventilador industrial. Passo a passo pra limpeza e liberação?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "Sujeira acumulada nas pás é literalmente a causa §4.1 do desbalanceamento (\"muito comum em ventiladores e exaustores\") e o Doc3 dá o passo a passo pedido: §9 Limpeza do Rotor (remover sujeira, limpar pás, remover incrustações, reinspecionar) e §12 critérios de aceitação para liberar o equipamento."
+    },
+    {
+      "pergunta": "A correia foi trocada mas continua um pico forte em 1x RPM com excentricidade no acionamento. Qual o passo a passo?",
+      "documento_esperado": "Doc5",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "O quadro é uma transmissão por correia com a correia já trocada, e excentricidade no lado do acionamento é excentricidade da polia motora, cujo passo a passo (relógio na periferia, correção de montagem, substituição/usinagem) está no Doc5 §8, que lista justamente 'pico dominante em 1x RPM' como sintoma."
+    },
+    {
+      "pergunta": "A correia está alinhada. Como corrijo a excentricidade que aparece como modulação em torno da rpm?",
+      "documento_esperado": "Doc5",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "A pergunta está dentro de uma transmissão por correia, descarta o alinhamento e pede a CORREÇÃO da excentricidade: o Doc4 §13 só nomeia 'excentricidade / modulação em torno da RPM' no diagnóstico, mas o Doc5 §8 entrega verificação com relógio, correção (reinstalar polia, corrigir montagem, substituir, usinar) e o critério de aceitação do §15."
+    },
+    {
+      "pergunta": "Como remover o acúmulo de sujeira e as incrustações das pás do ventilador antes de liberar a máquina?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "O defeito é acúmulo de sujeira/incrustação nas pás, que o Doc3 §4.1 reivindica explicitamente como causa de desbalanceamento ('muito comum em ventiladores e exaustores') e cuja remoção é o §9 'Limpeza do Rotor', com os três passos exatamente pedidos (remover sujeira, limpar pás, remover incrustações)."
+    },
+    {
+      "pergunta": "Quais os critérios de inspeção visual para pás danificadas e contrapesos soltos no ventilador?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "'Pás danificadas' e 'contrapesos soltos' são itens literais da lista de inspeção visual do Doc3 §7.1, e contrapeso é vocabulário de balanceamento (Doc3 §4.5 lista 'perda de contrapesos' como causa de desbalanceamento) — é desbalanceamento ocorrendo num ventilador, não falha da própria ventoinha."
+    },
+    {
+      "pergunta": "A hélice do ventilador não gira perpendicular ao eixo, como restauro o posicionamento geométrico?",
+      "documento_esperado": "Doc6",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "O defeito descrito é desvio ANGULAR do elemento girante em relação ao eixo — a definição literal do Doc6 ('o rotor não gira perpendicularmente ao eixo', §2) — e a hélice é o rotor daquela máquina, com ventiladores listados no §2; responde-se com Doc6 §9.2 (batimento axial) e §16 Caso 1 (remontagem/assentamento), não é falha de ventoinha."
+    },
+    {
+      "pergunta": "Qual o procedimento de limpeza do conjunto girante antes de qualquer correção?",
+      "documento_esperado": "Doc3",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "É pergunta sobre um passo documentado do procedimento de desbalanceamento — Doc3 §9 'Limpeza do Rotor / Antes de qualquer correção: remover sujeira, limpar pás, remover incrustações, inspecionar' —, cujo defeito de fundo é acúmulo de material (§4.1, 'muito comum em ventiladores'), e não limpeza para restaurar vazão de ar."
+    },
+    {
+      "pergunta": "Tem modulação em torno da rpm e harmônicos da rotação por excentricidade, qual o diagnóstico e a ação?",
+      "documento_esperado": "Doc5",
+      "origem": "reclassificado da geracao adversarial",
+      "justificativa": "Modulação/bandas laterais em torno da rpm é, neste acervo, assinatura de sistema por correia (Doc4 §13 lista exatamente 'Excentricidade — modulação em torno da RPM' e 'Polia defeituosa — harmônicos da rotação'), ou seja, excentricidade de POLIA, defeito documentado com verificação e correção no Doc5 §3.1/§8 — não há nenhum indício de rotor/estator na pergunta."
+    }
+  ],
+  "ambiguos_excluidos": [
+    {
+      "pergunta": "Quando eu corto a energia o zumbido some na hora, mas a vibração vai caindo devagar. Como sigo daqui?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "É o teste clássico de origem elétrica do rotor excêntrico descrito sem uma única palavra do termo_chave. Faltam os dois radicais, 'rotor' e 'excent'; nenhum token da pergunta trunca em 6 letras para qualquer um deles.",
+      "justificativa": "Como está escrito, o teste depõe CONTRA excentricidade (força magnética sumiria junto com a energia, e aqui a vibração decai com a rotação, isto é, origem mecânica), mas o enunciado não separa desbalanceamento (Doc3) de desalinhamento (Doc2) ou folga mecânica — sem espectro e direção de medição nem engenheiro escolhe o procedimento."
+    },
+    {
+      "pergunta": "Girando o eixo na mão dá pra ver que o disco corre fora de centro, tipo um empeno. Como corrigir?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "'centro' trunca em 'centro' e 'empeno' em 'empeno'; falta 'excent', que é o radical que carrega o defeito. Falta 'rotor' também — o técnico disse 'disco'.",
+      "justificativa": "O defeito é batimento radial de um elemento girante não identificado: se o 'disco' for polia, o Doc5 cobre literalmente (§3.1 'centro geométrico não coincide com o centro de rotação' e §8 relógio na periferia, girar lentamente, corrigir montagem ou usinar); se for o rotor do motor é excentricidade sem procedimento, e o 'empeno' ainda puxa pro eixo empenado, que no acervo só existe como causa dentro do Doc6."
+    },
+    {
+      "pergunta": "Depois que o motor levou pancada no transporte ele passou a vibrar forte em 1x e o ronco ficou desigual.",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "'1x' é token válido no regex [a-z0-9]+ e vira '1x'. Faltam 'rotor' e 'excent'. Descreve assinatura 1x + ronco desigual, que é o par que separa excentricidade de desbalanceamento puro, sem nomear nenhum dos dois.",
+      "justificativa": "Impacto no transporte com 1x forte é ao mesmo tempo causa e assinatura de desbalanceamento no Doc3 (§4.5 'Impactos' e §7.3 pico dominante em 1x RPM) e causa listada de rotor inclinado no Doc6 (§4.5 'Quedas durante transporte'); o único indício de excentricidade é o 'ronco desigual', qualitativo demais para decidir sem espectro (axial/2x) ou medição de entreferro."
+    },
+    {
+      "pergunta": "Vejo o eixo correndo fora de centro quando giro na mão. Qual o passo a passo da correção?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc1",
+      "porque_evade": "Faltam 'rotor' e 'excent'. Com documento=Doc1 o melhor trecho pontua 2.58, acima do piso por pouco, mas o piso sequer é avaliado nesse caminho: qualquer trecho de rolamento com score > 0 vira resposta.",
+      "justificativa": "Batimento radial visto girando na mão pode ser eixo empenado — que o Doc6 trata de fato (4.3 'Eixo Empenado', 14 'Inspeção do Eixo: empenamento/batimento excessivo', 16 Caso 3 retificar ou substituir) — ou folga de rolamento (Doc1, 19 Caso 3), ou excentricidade radial do rotor, que não tem procedimento; a pergunta não informa batimento axial nem entreferro, e sem isso o defeito não fecha."
+    },
+    {
+      "pergunta": "Tem um chiado agudo que aumenta quando acelera e vem da parte de trás do motor, do lado da hélice.",
+      "alvo": "ventoinha",
+      "mecanismo": "parafrase",
+      "porque_evade": "'hélice' -> 'helice', não 'ventoi'. Igual ao caso do 'ventilador': o termo técnico correto para a peça evade porque o catálogo cravou um só sinônimo no termo_chave.",
+      "justificativa": "Chiado agudo que cresce com a rotação na traseira do motor é assinatura tanto de rolamento traseiro seco/danificado (Doc1: 4.5 lubrificação deficiente, 5 'ruído crescente' e 'vibração em altas frequências') quanto de hélice roçando na tampa defletora — e o mancal traseiro fica exatamente onde está a hélice; sem estetoscópio, temperatura do mancal ou giro manual não dá para separar."
+    },
+    {
+      "pergunta": "O rotor está com batimento radial acima da tolerância no relógio comparador. E agora?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "parafrase",
+      "porque_evade": "Falta 'excent': 'batimento' → 'batime', 'radial' → 'radial'. Verificado: é o vazamento mais forte da lista — Doc6 com score 16,52.",
+      "justificativa": "Batimento radial alto é medição, não defeito: o próprio Doc6 manda medi-lo (§9.1, relógio na periferia do rotor) e corrige batimento excessivo quando a causa é eixo empenado (§14 e §16 Caso 3), mas o discriminador do rotor inclinado é o batimento AXIAL (§9.2) — sem o valor axial não dá para separar inclinação/eixo empenado (coberto) de excentricidade radial do rotor (sem procedimento)."
+    },
+    {
+      "pergunta": "O rotor está torto e raspando no estator. Usa esse documento pra me explicar.",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc5",
+      "porque_evade": "Falta 'excent' ('torto' → 'torto'). Verificado: responde com score 2,62 usando o procedimento de POLIAS pra um defeito de rotor.",
+      "justificativa": "'Torto' tanto descreve rotor inclinado (Doc6 §8 lista 'inclinação aparente do rotor' e 'marcas de contato' como achados dele) quanto rotor descentrado (sem procedimento), e — ao contrário do item 55 — a pergunta não diz onde a raspagem ocorre; só a medição de batimento axial vs radial do Doc6 §9 decidiria. O seletor Doc5 (polias) está errado em qualquer leitura."
+    },
+    {
+      "pergunta": "O desbalanceamento foi tratado e ainda tem oscilação sincronizada com a rotação, típico de excentricidade. Como meço e corrijo?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "Tem 'excent', mas 'rotação' vira 'rotaca' (≠ 'rotor'), então falta 'rotor'. Casa 'desbal' → Doc3 e do_defeito=Doc3 anula piso e concentração. Simulado: VAZOU, Doc3, '2. Conceitos Fundamentais', score 6.34.",
+      "justificativa": "'Oscilação sincronizada com a rotação' é literalmente a linha de Excentricidade do Doc5 §13, mas a pergunta não nomeia componente nenhum: se a excentricidade for de polia o Doc5 §8 cobre medição e correção, se for do rotor não há procedimento, e não há como decidir qual."
+    },
+    {
+      "pergunta": "Depois de resolver o desalinhamento, sobrou uma excentricidade de montagem no cubo. Qual a correção e a validação?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "cocitacao",
+      "porque_evade": "'excent' presente, 'rotor' ausente (fala 'cubo' → 'cubo'). Casa 'desali' → Doc2 e do_defeito=Doc2 pula os dois portões de qualidade. Simulado: VAZOU, Doc2, 'Introducao', score 5.26.",
+      "justificativa": "Excentricidade por montagem no cubo é exatamente a causa 'montagem incorreta' do Doc5 §3.1 somada ao §12 (cubo e chaveta) SE o cubo for de polia, mas fica descoberta se for cubo de rotor ou de hélice — e a pergunta não nomeia o componente nem dá pista de correia."
+    },
+    {
+      "pergunta": "O ventilador acionado está vibrando muito, como diagnostico e corrijo?",
+      "alvo": "ventoinha",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc4",
+      "porque_evade": "'ventil' ≠ 'ventoi'. Com documento='Doc4' a checagem de espalhamento é neutralizada e o piso é vencido pela introdução do Doc4, que cita ventiladores entre as máquinas atendidas. Caso limite útil: score baixo (3.32) e mesmo assim o sistema gera prescrição. Simulado: VAZOU, Doc4, 'Introducao', score 3.32.",
+      "justificativa": "Um único sintoma (vibração alta) sem espectro, sem nível axial e sem saber se o acionamento é por correia ou acoplamento direto: casa igualmente com desbalanceamento (Doc3, que nomeia ventiladores), rotor inclinado (Doc6, idem), correia/polia (Doc4/Doc5), rolamento (Doc1) e também com pá trincada (sem procedimento) — nem engenheiro decide sem FFT e nível axial/2x."
+    },
+    {
+      "pergunta": "Como faço a verificação da excentricidade com relógio comparador e qual a correção indicada?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc5",
+      "porque_evade": "Tem 'excent' mas não tem 'rotor' — o termo_chave 'rotor excentrico' exige os dois radicais, então _defeitos_citados() não acha nada e do_defeito=None. O seletor em Doc5 mata a checagem de documento único, e o piso cai fácil: o Doc5 tem a seção '8. Verificação da Excentricidade' com o relógio comparador passo a passo. Simulado: VAZOU, Doc5, '8. Verificação da Excentricidade', score 13.83 — o vazamento mais perigoso do lote, porque a resposta sai plausível e completa.",
+      "justificativa": "A pergunta não diz excentricidade DE QUÊ: se for polia, o Doc5 §8 responde ponta a ponta (relógio na periferia + correção); se for rotor fora de centro em relação ao estator, não há procedimento, e entregar a correção do Doc5 (reinstalar/usinar/substituir polia) para um rotor é prescrição errada — a medição é comum, a ação é que diverge."
+    },
+    {
+      "pergunta": "Pico dominante em 1x rpm com vibração radial elevada e oscilação sincronizada com a rotação, como corrijo?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc5",
+      "porque_evade": "Ataque puramente sintomático: os stems são 'pico', 'domina', 'radial', 'eleva', 'oscila', 'rotaca' — não tem 'rotor' NEM 'excent', os dois radicais do termo_chave. Com Doc5 no seletor, casa a seção '13. Diagnóstico por Vibração', que descreve exatamente esses três sintomas sob o rótulo 'excentricidade'. Simulado: VAZOU, Doc5, '13. Diagnóstico por Vibração', score 19.89.",
+      "justificativa": "O tripé 1x dominante + radial elevada + oscilação síncrona é ao mesmo tempo a confirmação de desbalanceamento do Doc3 §8, a assinatura de excentricidade de polia do Doc5 §13 (palavra por palavra) e a de excentricidade de rotor, que não tem procedimento; faltam nível axial, presença de 2x/harmônicos e se há transmissão por correia para separar os três."
+    },
+    {
+      "pergunta": "Qual o critério de aceitação para excentricidade e qual a tolerância de batimento?",
+      "alvo": "eccentric_rotor",
+      "mecanismo": "seletor",
+      "documento_seletor": "Doc5",
+      "porque_evade": "'excent' e 'batime' nos stems; falta 'rotor', então o termo_chave 'rotor excentrico' não fecha. Com Doc5 fixado, cai em '15. Critérios de Aceitação', que cita 'não apresenta excentricidade significativa'. Risco específico: o técnico pede tolerância numérica e recebe critério de aceitação de POLIA aplicado a um rotor. Simulado: VAZOU, Doc5, '15. Critérios de Aceitação', score 5.98.",
+      "justificativa": "Sem dizer o componente, o critério só existe para polia (Doc5 §15, 'não apresenta excentricidade significativa') e não existe para rotor excêntrico; além disso a tolerância numérica de batimento não está em documento nenhum (Doc6 §18 diz apenas 'dentro da tolerância'), então parte da pergunta não pode ser respondida nem no melhor caso e o número jamais pode ser inventado."
+    }
+  ]
+}

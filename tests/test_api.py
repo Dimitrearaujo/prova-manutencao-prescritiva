@@ -25,6 +25,7 @@ from prescritiva.api import main as api
 from prescritiva.config import load_settings
 from prescritiva.diagnosis.engine import MotorDiagnostico
 from prescritiva.integracao.repositorio import RepositorioDiagnosticos
+from prescritiva.knowledge import cadastro as cadastro_mod
 from prescritiva.knowledge.extract import extract_all
 from prescritiva.llm.deterministico import GeradorDeterministico
 
@@ -376,7 +377,7 @@ def test_pdf_invalido_e_recusado_sem_envenenar_a_base(cliente_upload):
 
 def test_upload_acima_do_teto_e_recusado(cliente_upload, monkeypatch):
     testclient, docs = cliente_upload
-    monkeypatch.setattr(api, "TAMANHO_MAXIMO_BYTES", 1024)
+    monkeypatch.setattr(cadastro_mod, "TAMANHO_MAXIMO_BYTES", 1024)
 
     resposta = testclient.post(
         "/documentos", files={"arquivo": ("Grande.pdf", b"A" * 5000, "application/pdf")}
