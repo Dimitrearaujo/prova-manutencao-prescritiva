@@ -54,10 +54,14 @@ LOGGER = logging.getLogger(__name__)
 # suficiente para que nenhum "gemeo" do proprio evento entre como vizinho.
 JANELA_VIZINHANCA_S = 300.0
 
-# Piso de aderencia BM25 para a consulta livre. O filtro anterior era "score > 0",
-# que nao filtra nada: qualquer pergunta com uma palavra em comum com o corpus
-# devolvia trecho e o modelo escrevia procedimento em cima dele.
-PISO_SCORE_CHAT = 2.5
+# Nao existe piso de aderencia na consulta livre, e a ausencia e deliberada.
+# Houve um: PISO_SCORE_CHAT = 2.5, aplicado quando a pergunta nao nomeava defeito.
+# A auditoria adversarial mediu que aquele ramo nao tinha poder de decisao - as
+# distribuicoes de score da pergunta legitima e da parafrase de defeito sem
+# procedimento se sobrepoem inteiras -, e qualquer piso ali troca vazamento por
+# mudez quase na proporcao de um para um. Substituir um numero ruim por um numero
+# melhor manteria o erro de metodo; o portao passou a ser o catalogo, que decide
+# por escopo. Ver perguntar() e scripts/auditoria_chat.py.
 
 SEM_ASSUNTO = (
     "Nenhum procedimento cadastrado trata desse assunto. Envie um documento orientativo "
@@ -311,25 +315,40 @@ class MotorDiagnostico:
     def perguntar(self, pergunta: str, *, documento: str | None = None) -> dict[str, Any]:
         """Consulta livre a base documental, usada pelo chat.
 
-        Passa pelo mesmo portao de cobertura do diagnostico, por tres criterios:
+        A regra e uma so, e vale igual para as tres formas de perguntar:
 
-        1. cobertura - se a pergunta nomeia um defeito do catalogo que nenhum
-           procedimento cobre, a resposta e a mesma recusa do diagnostico, com
-           pedido de cadastro, e o modelo nao e chamado. Se o defeito nomeado e
-           coberto, o contexto fica restrito ao documento que o cobre, como no
-           caminho do diagnostico;
-        2. aderencia - o melhor trecho precisa passar de PISO_SCORE_CHAT. O
-           filtro anterior era "score > 0", que aceitava qualquer coincidencia
-           de palavra;
-        3. concentracao - os trechos precisam vir do MESMO documento. Resposta
-           montada com pedaco de tres procedimentos diferentes e o sintoma de
-           que nenhum deles trata do assunto.
+            o CATALOGO decide se responde e quais procedimentos sao candidatos;
+            a ADERENCIA do texto decide qual candidato - nunca se responde.
 
-        Os criterios 2 e 3 valem para a pergunta que nao nomeia defeito nenhum:
-        e ela que antes entrava sem portao algum.
+        A versao anterior invertia essa ordem quando a pergunta nao nomeava
+        defeito nenhum: caia num BM25 sobre o corpo inteiro, com um piso de score
+        e uma exigencia de documento unico. Foi medido que esse ramo nao decide
+        nada. Sobre 101 perguntas adversariais e 30 legitimas, a geometria do
+        score e a mesma nos dois grupos - mediana de aderencia 6,88 contra 7,83,
+        margem para o segundo documento 1,72 contra 1,62 - e nenhum limiar separa
+        os dois sem emudecer o produto. scripts/auditoria_chat.py refaz a conta.
+
+        A causa e visivel no acervo. O Doc5 tem uma secao inteira chamada
+        "3.1 Excentricidade", que abre com "ocorre quando o centro geometrico da
+        POLIA nao coincide com o centro de rotacao". Uma pergunta sobre
+        excentricidade do ROTOR - defeito que nenhum procedimento cobre - casa
+        quase palavra por palavra com esse trecho. O corpo nao distingue o
+        defeito coberto do defeito homonimo em outro componente; so o escopo
+        distingue, e o escopo e consultado pelo catalogo.
+
+        Dai as tres saidas sem chamar o modelo:
+
+        1. a pergunta nomeia um defeito que nenhum procedimento cobre - recusa e
+           pede o cadastro, como no caminho do diagnostico;
+        2. a pergunta nao nomeia defeito algum - nao ha o que ancorar, e a
+           resposta diz sobre o que o sistema sabe falar;
+        3. a tela restringiu a um procedimento que nao esta entre os candidatos -
+           o combo da interface pode ESTREITAR o que o catalogo aprovou, nunca
+           criar aprovacao.
         """
-        citados = self._defeitos_citados(pergunta)
-        sem_documento = [rotulo for rotulo, cobertura in citados if not cobertura.coberto]
+        ancoradas = self._defeitos_citados(pergunta)
+
+        sem_documento = [rotulo for rotulo, cobertura in ancoradas if not cobertura.coberto]
         if sem_documento:
             return _recusa_chat(
                 "defeito_sem_documentacao",
@@ -338,45 +357,179 @@ class MotorDiagnostico:
                 "passe a instruir a correcao.",
             )
 
-        cobertos = sorted((c for _, c in citados if c.coberto), key=lambda c: c.score, reverse=True)
-        do_defeito = cobertos[0].documento if cobertos else None
-        trechos = self.base.buscar(pergunta, top_k=self.top_k, documento=documento or do_defeito)
+        pendente = self._fenomeno_sem_dono(pergunta)
+        if pendente is not None:
+            termo, rotulo, donos = pendente
+            return _recusa_chat(
+                "fenomeno_ambiguo",
+                f'"{termo.capitalize()}" tanto pode ser {rotulo}, que nao tem procedimento '
+                f"cadastrado, quanto o mesmo fenomeno em {donos}, que tem. A pergunta nao "
+                "diz qual dos dois, e prescrever pelo palpite entregaria ao tecnico o "
+                f"procedimento do componente errado. Diga em que componente, ou cadastre um "
+                f"documento orientativo sobre {rotulo.lower()}.",
+            )
+
+        cobertas = [(rotulo, c) for rotulo, c in ancoradas if c.coberto]
+        if not cobertas:
+            return _recusa_chat("sem_defeito_nomeado", self._sobre_o_que_sei_falar())
+
+        # Um documento pode ser candidato por mais de um defeito (os quatro modos
+        # de falha de rolamento caem todos no Doc1), e uma pergunta pode nomear
+        # dois defeitos de documentos diferentes ("a correia e a polia"). O mapa
+        # guarda o rotulo para que a resposta possa declarar de que defeito e o
+        # procedimento que ela esta citando.
+        candidatos: dict[str, str] = {}
+        for rotulo, cobertura in sorted(cobertas, key=lambda item: item[1].score, reverse=True):
+            candidatos.setdefault(cobertura.documento, rotulo)
+
+        if documento is not None and documento not in candidatos:
+            return _recusa_chat(
+                "restricao_incompativel",
+                f"A pergunta foi restrita a {documento}, mas esse procedimento nao trata do "
+                f"que foi perguntado. Os procedimentos que tratam sao: "
+                f"{', '.join(f'{doc} ({rot})' for doc, rot in sorted(candidatos.items()))}. "
+                "Escolha um deles ou remova a restricao.",
+            )
+
+        permitidos = {documento} if documento is not None else set(candidatos)
+        trechos = self.base.buscar(pergunta, top_k=self.top_k, documento=permitidos)
+        if not trechos:
+            # O portao e a recuperacao normalizam texto de formas diferentes: o
+            # portao compara RADICAIS e o BM25 compara TOKENS. Por isso
+            # "como balanceio um ventilador em campo?" ancora no Doc3 pelo radical
+            # "balanc" e depois nao recupera nada dele - o acervo escreve
+            # "balanceamento", nunca "balanceio". Com o defeito ja aprovado, cair
+            # fora seria recusar por vocabulario, nao por cobertura. Entao a
+            # segunda tentativa usa o vocabulario canonico do proprio catalogo,
+            # que e o mesmo que o caminho do diagnostico usa.
+            canonico = " ".join(
+                f"{rotulo} {self._termos_do_rotulo(rotulo)}"
+                for doc, rotulo in candidatos.items()
+                if doc in permitidos
+            )
+            trechos = self.base.buscar(canonico, top_k=self.top_k, documento=permitidos)
         if not trechos:
             return _recusa_chat("fora_de_escopo", SEM_ASSUNTO)
 
-        if do_defeito is None:
-            if trechos[0].score < PISO_SCORE_CHAT:
-                return _recusa_chat("fora_de_escopo", SEM_ASSUNTO)
-            documentos = sorted({t.documento for t in trechos})
-            if len(documentos) > 1:
-                return _recusa_chat(
-                    "fora_de_escopo",
-                    "Nenhum procedimento cadastrado trata desse assunto por inteiro: os "
-                    f"trechos mais aderentes ficaram espalhados por {len(documentos)} "
-                    f"documentos ({', '.join(documentos)}), sinal de que nenhum deles cobre "
-                    "a pergunta. Reformule citando o defeito, ou escolha um documento.",
-                )
-
+        escolhido = trechos[0].documento
+        defeito = candidatos[escolhido]
         contexto = "\n---\n".join(f"({t.documento} / {t.secao})\n{t.texto}" for t in trechos)
         resposta, gerador = self._gerar_com_fallback(
             INSTRUCAO_CHAT,
+            f"PROCEDIMENTO CONSULTADO: {escolhido}, que trata de {defeito}.\n"
             f"PERGUNTA: {pergunta}\n\nTRECHOS DO PROCEDIMENTO:\n{contexto}",
         )
         return {
             "situacao": "respondido",
-            "documento": trechos[0].documento,
+            "documento": escolhido,
+            # O defeito viaja com a resposta para que a tela e a API possam dizer
+            # de que procedimento o texto saiu. Quem pergunta "ja troquei o
+            # rolamento, e agora?" recebe, no maximo, o procedimento de rolamento
+            # com essa etiqueta na frente, em vez de uma instrucao sem origem.
+            "defeito": defeito,
             "resposta": resposta,
             "trechos": [asdict(t) for t in trechos],
             "gerador": gerador,
         }
 
+    def _termos_do_rotulo(self, rotulo: str) -> str:
+        """Vocabulario de busca que o catalogo declara para este defeito."""
+        for entrada in self.catalogo.values():
+            if entrada["rotulo"] == rotulo:
+                return entrada["termos_busca"]
+        return rotulo
+
+    def _fenomeno_sem_dono(self, pergunta: str) -> tuple[str, str, str] | None:
+        """Fenomeno citado que pode ser de um defeito sem procedimento.
+
+        Dois fenomenos deste acervo pertencem a mais de um defeito, e o que
+        decide de qual e o COMPONENTE, nunca a palavra:
+
+            excentricidade  do rotor nao tem procedimento; da polia tem, e o
+                            Doc5 dedica a ela a secao "3.1 Excentricidade";
+            ventilador      falha da propria ventoinha nao tem procedimento;
+                            desbalanceamento de ventilador tem, porque o escopo
+                            do Doc3 declara cobrir ventiladores.
+
+        Citar o fenomeno sem citar o componente deixa a pergunta indecidivel. O
+        portao anterior resolvia isso pelo BM25, que escolhia o documento com
+        mais palavras em comum - e foi medido que essa escolha nao tem lastro.
+        Aqui a indecisao vira pergunta de volta ao tecnico.
+
+        O termo so bloqueia quando o dono legitimo NAO foi nomeado. E o que
+        separa esta regra de uma lista de palavras proibidas: "como corrigir a
+        excentricidade da polia?" continua respondendo pelo Doc5.
+        """
+        radicais = stems(pergunta)
+        nomeados = {
+            fault
+            for fault, entrada in self.catalogo.items()
+            if any(stems(forma) <= radicais for forma in _formas_de_nomear(entrada))
+        }
+        for fault, entrada in self.catalogo.items():
+            if fault in nomeados:
+                continue
+            cobertura = self.base.cobertura(
+                entrada["termo_chave"], entrada["termos_busca"], entrada["rotulo"]
+            )
+            if cobertura.coberto:
+                continue
+            for ambiguo in entrada.get("termos_ambiguos", []):
+                if not stems(ambiguo["termo"]) <= radicais:
+                    continue
+                donos = [d for d in ambiguo["resolvido_por"] if d not in nomeados]
+                if len(donos) == len(ambiguo["resolvido_por"]):
+                    rotulos = ", ".join(
+                        self.catalogo[d]["rotulo"].lower() for d in ambiguo["resolvido_por"]
+                    )
+                    return ambiguo["termo"], entrada["rotulo"], rotulos
+        return None
+
+    def _sobre_o_que_sei_falar(self) -> str:
+        """Recusa que ensina, em vez de recusa que so fecha a porta.
+
+        Sem esta lista o tecnico recebe "reformule" e nao tem como saber para
+        onde reformular. A lista sai da cobertura medida na hora, nao de texto
+        fixo: cadastrar um procedimento novo muda a resposta sozinho.
+        """
+        tratados = sorted(
+            {
+                f"{cobertura.documento} ({entrada['rotulo']})"
+                for entrada in self.catalogo.values()
+                for cobertura in [
+                    self.base.cobertura(
+                        entrada["termo_chave"], entrada["termos_busca"], entrada["rotulo"]
+                    )
+                ]
+                if cobertura.coberto
+            }
+        )
+        return (
+            "A pergunta nao nomeia nenhum defeito com procedimento cadastrado, e sem isso "
+            "nao ha procedimento de onde tirar a instrucao. Diga qual defeito voce suspeita, "
+            "ou cadastre um documento orientativo sobre ele. "
+            f"Hoje ha procedimento para: {'; '.join(tratados)}."
+        )
+
     def _defeitos_citados(self, pergunta: str) -> list[tuple[str, Cobertura]]:
         """Defeitos do catalogo que a pergunta nomeia, com a cobertura de cada um.
 
-        O casamento exige todos os radicais do termo-chave dentro da pergunta -
-        a mesma exigencia que a cobertura faz contra o escopo do documento. Por
-        isso "rotor excentrico" nao casa com o catalogo do rotor inclinado, que
-        pede os radicais de "rotor" e de "inclinado".
+        Cada defeito declara uma ou mais formas de ser nomeado, e basta UMA
+        casar. O casamento de cada forma continua exigindo todos os radicais
+        dentro da pergunta - a mesma exigencia que a cobertura faz contra o
+        escopo do documento -, entao "rotor excentrico" nao casa com o catalogo
+        do rotor inclinado, que pede os radicais de "rotor" e de "inclinado".
+
+        A lista de formas existe porque o radical e o corte em seis letras
+        separam palavras que o tecnico usa como sinonimo: "balanceamento" vira
+        "balanc" e "desbalanceamento" vira "desbal"; "cocked rotor" e o nome que
+        o proprio Doc6 usa no titulo e nao casa com "rotor inclinado". Sem elas o
+        portao recusava pergunta legitima, que e a falha pior.
+
+        tests/test_catalogo_vocabulario.py impede que essa lista vire palpite:
+        forma de defeito COBERTO tem que existir no texto do documento que o
+        cobre, e forma de defeito SEM procedimento nao pode aparecer no escopo de
+        documento nenhum.
         """
         radicais = stems(pergunta)
         return [
@@ -387,7 +540,7 @@ class MotorDiagnostico:
                 ),
             )
             for entrada in self.catalogo.values()
-            if stems(entrada["termo_chave"]) <= radicais
+            if any(stems(forma) <= radicais for forma in _formas_de_nomear(entrada))
         ]
 
     def _gerar_com_fallback(self, instrucao: str, pergunta: str) -> tuple[str, str]:
@@ -408,11 +561,22 @@ class MotorDiagnostico:
             return reserva.gerar(instrucao, pergunta), f"{reserva.nome} (fallback em execucao)"
 
 
+def _formas_de_nomear(entrada: dict[str, Any]) -> list[str]:
+    """Formas pelas quais uma pergunta pode nomear este defeito.
+
+    O termo-chave sempre entra: ele e o que decide a cobertura contra o escopo do
+    documento, entao nomear o defeito por ele nunca pode falhar. `termos_pergunta`
+    e opcional e so acrescenta.
+    """
+    return [entrada["termo_chave"], *entrada.get("termos_pergunta", [])]
+
+
 def _recusa_chat(situacao: str, mensagem: str) -> dict[str, Any]:
     """Resposta do chat sem chamar o modelo. Sem trecho, nao ha o que reescrever."""
     return {
         "situacao": situacao,
         "documento": None,
+        "defeito": None,
         "resposta": mensagem,
         "trechos": [],
         "gerador": "-",

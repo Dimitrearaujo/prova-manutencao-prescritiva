@@ -445,12 +445,25 @@ def tela_chat(motor: MotorDiagnostico) -> None:
         st.markdown(pergunta)
     with st.chat_message("assistant"), st.spinner("Consultando procedimentos..."):
         resultado = motor.perguntar(pergunta, documento=None if escolhido == "(todos)" else escolhido)
+        # A etiqueta vem antes do texto de proposito. O chat responde a partir do
+        # defeito que a pergunta NOMEIA, e nem sempre e o defeito que o tecnico
+        # tem na frente: quem escreve "ja troquei o rolamento e continua" recebe
+        # o procedimento de rolamento, e precisa ver isso escrito antes de ler as
+        # instrucoes. Sem a etiqueta, a resposta certa para outra pergunta passa
+        # por resposta para esta.
+        if resultado.get("defeito"):
+            st.caption(
+                f"Procedimento de **{resultado['defeito']}** ({resultado['documento']}). "
+                "Se o seu caso nao e esse, refaca a pergunta nomeando o defeito."
+            )
         st.markdown(resultado["resposta"])
         if resultado["trechos"]:
             with st.expander(f"Fontes ({len(resultado['trechos'])})"):
                 for trecho in resultado["trechos"]:
                     st.markdown(f"**{trecho['documento']} / {trecho['secao']}**")
                     st.text(trecho["texto"][:700])
+        elif resultado["situacao"] != "respondido":
+            st.caption(f"Situacao: `{resultado['situacao']}` — nenhum texto foi gerado.")
     st.session_state.conversa.append(("assistant", resultado["resposta"]))
 
 

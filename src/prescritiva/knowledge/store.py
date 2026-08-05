@@ -25,6 +25,7 @@ e nao quebra a do escopo.
 from __future__ import annotations
 
 import json
+from collections.abc import Collection
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -114,10 +115,16 @@ class BaseConhecimento:
         consulta: str,
         *,
         top_k: int = 4,
-        documento: str | None = None,
+        documento: str | Collection[str] | None = None,
         preferir_secoes: str | None = None,
     ) -> list[TrechoRecuperado]:
-        """Recupera trechos por BM25.
+        """Recupera trechos por BM25, opcionalmente restrita a documentos.
+
+        `documento` aceita um nome ou um conjunto deles. O conjunto existe porque
+        uma pergunta pode nomear mais de um defeito coberto - "a correia e a
+        polia" -, e nesse caso quem escolhe entre os procedimentos candidatos e a
+        aderencia do texto. Restringir a UM documento cedo demais transformaria
+        essa escolha num palpite tomado antes de olhar a pergunta.
 
         `preferir_secoes` inclina o resultado para as secoes que ensinam a agir.
         Perguntar "como corrigir desalinhamento angular" casa fortissimo com a
@@ -127,12 +134,17 @@ class BaseConhecimento:
         """
         if not self._bm25_trechos or not self.trechos:
             return []
+        permitidos = (
+            None
+            if documento is None
+            else ({documento} if isinstance(documento, str) else set(documento))
+        )
         scores = self._bm25_trechos.get_scores(tokenize(consulta))
         preferidos = stems(preferir_secoes) if preferir_secoes else set()
         candidatos = [
             (score * (_PESO_SECAO_PREFERIDA if preferidos & stems(trecho.secao) else 1.0), trecho)
             for score, trecho in zip(scores, self.trechos, strict=True)
-            if documento is None or trecho.documento == documento
+            if permitidos is None or trecho.documento in permitidos
         ]
         candidatos.sort(key=lambda item: item[0], reverse=True)
         return [
