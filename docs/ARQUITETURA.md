@@ -482,6 +482,18 @@ está esperando — ela vira um `registro_id` nulo e explícito, não um erro. A
 rediagnosticado depois que um procedimento novo é cadastrado, e sobrescrever
 apagaria a trilha que justifica a decisão tomada naquele momento.
 
+`GET /diagnosticos` serve exatamente o que foi gravado, sem reaplicar os
+portões no momento da leitura — e isso é intencional, não uma lacuna. A tabela
+é a trilha de auditoria da decisão que foi tomada; se a leitura reprocessasse o
+evento contra o estado atual do catálogo, o registro deixaria de provar o que
+o sistema respondeu naquele instante, que é justamente o que sustenta uma
+parada de máquina ou uma reincidência questionada depois. O único jeito de a
+cobertura de um defeito diminuir é remover um PDF de `data/docs/` por fora da
+API — não existe endpoint de exclusão —, e mesmo nesse caso o registro antigo
+continua correto: ele descreve a decisão de quando foi emitido, não a
+capacidade do sistema hoje. Não há caminho, hoje, em que a leitura do
+histórico gere ou substitua uma prescrição nova sem passar pelos três portões.
+
 **Ciclo de vida.** Novos eventos rotulados alimentam a reconstrução periódica do
 índice. Novos procedimentos entram pelo próprio painel ou por `POST /documentos`.
 
