@@ -16,6 +16,7 @@ from plotly.graph_objects import Figure
 from pydantic import ValidationError
 
 from prescritiva.config import load_catalog, load_settings
+from prescritiva.data.ingest import REGIME_FORA_DA_GRADE
 from prescritiva.diagnosis.contexto import ATIPICO, INEDITO, formatar_regime
 from prescritiva.diagnosis.engine import MotorDiagnostico
 from prescritiva.knowledge.cadastro import CadastroInvalido, cadastrar_documento
@@ -222,7 +223,6 @@ def tela_diagnostico(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
         rotulo_real = evento.get("fault")
 
     evento.pop("fault", None)
-    rpm_informado = evento.get("rpm")
     try:
         with st.spinner("Consultando historico e procedimentos..."):
             diagnostico = motor.diagnosticar(evento)
@@ -248,21 +248,41 @@ def tela_diagnostico(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
         "Padrao identificado", diagnostico.rotulo or "nao determinado",
         help="Rotulo que os vizinhos mais proximos carregam. Nao vem de classificador treinado.",
     )
+    # O numero exibido tem de ser o mesmo que o portao usa. O portao roda sobre o
+    # voto simples (`similarity/index.py`), nao sobre o peso: exibir a `confianca`
+    # sob o rotulo "consenso" e enunciar o limiar sobre ela fazia a tela afirmar
+    # uma regra que o motor nao implementa - e, quando as duas medidas cruzam os
+    # 45%, imprimir "consenso de 44% acima do minimo de 45%". O peso continua na
+    # tela, no help, porque mede outra coisa: o quanto o vencedor esta perto.
+    # `.get` com default porque rotacao fora da grade nao chega a consultar o
+    # indice e devolve `similaridade` vazio.
+    consenso = diagnostico.similaridade.get("consenso_simples", 0.0)
     col2.metric(
-        "Consenso dos vizinhos", f"{diagnostico.confianca:.0%}",
+        "Consenso dos vizinhos", f"{consenso:.0%}",
         help=(
-            f"Peso somado dos {motor.indice.n_neighbors} vizinhos mais proximos que carregam esse "
-            f"rotulo. Abaixo de {motor.indice.min_consensus:.0%} o evento e tratado como padrao "
-            "nao reconhecido."
+            f"Fracao dos {motor.indice.n_neighbors} vizinhos mais proximos que carregam esse "
+            "rotulo - um voto por vizinho, e e sobre ela que o portao decide. Abaixo de "
+            f"{motor.indice.min_consensus:.0%} o evento e tratado como padrao nao reconhecido. "
+            f"O peso somado desses mesmos vizinhos e {diagnostico.confianca:.0%}, e diz o quanto "
+            "o vencedor esta perto, nao quantos concordam."
         ),
     )
     col3.metric(
-        "Regime de rotacao", formatar_regime(diagnostico.regime_rpm),
+        "Regime de rotacao",
+        (
+            "sem regime comparavel"
+            if diagnostico.regime_rpm == REGIME_FORA_DA_GRADE
+            else formatar_regime(diagnostico.regime_rpm)
+        ),
         help="A busca e particionada por rotacao: so entram no calculo eventos do mesmo regime.",
     )
-    if rpm_informado is not None and abs(float(rpm_informado) - _rpm_do_regime(diagnostico.regime_rpm)) >= 1:
+    # `regime_aproximado` e a propria regra do motor: True quando a rotacao caiu
+    # num regime conhecido mas nao e o valor exato dele. Reimplementar a condicao
+    # aqui com uma diferenca de 1 rpm fazia a legenda aparecer tambem no caso
+    # `fora_da_grade`, onde comparacao nenhuma foi feita e a frase e falsa.
+    if diagnostico.regime_aproximado:
         st.caption(
-            f"O evento chegou com {float(rpm_informado):.0f} rpm. O regime com historico mais "
+            f"O evento chegou com {float(diagnostico.rpm):.0f} rpm. O regime com historico mais "
             f"proximo e {formatar_regime(diagnostico.regime_rpm)}, e a comparacao foi feita contra ele."
         )
 
@@ -384,8 +404,9 @@ def tela_diagnostico(eventos: pd.DataFrame, motor: MotorDiagnostico) -> None:
         )
         if similaridade["reconhecido"]:
             st.caption(
-                f"Distancia media abaixo do limiar e consenso de {diagnostico.confianca:.0%} acima "
-                f"do minimo de {motor.indice.min_consensus:.0%}: o padrao foi aceito."
+                f"Distancia media abaixo do limiar e consenso de "
+                f"{similaridade.get('consenso_simples', 0.0):.0%} acima do minimo de "
+                f"{motor.indice.min_consensus:.0%}: o padrao foi aceito."
             )
         else:
             st.caption(f"Padrao recusado. {similaridade['motivo']}")
