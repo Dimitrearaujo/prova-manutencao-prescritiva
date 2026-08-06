@@ -509,10 +509,15 @@ flowchart LR
     API <--> MEM
     API --> OLL
     API <--> BD
-    API --> UI
     API --> CMMS
+    UI <--> MEM
+    UI --> OLL
     BUILD -.-> MEM
 ```
+
+O painel aparece ligado ao índice e ao modelo, e **não à API**: ele importa o
+motor em processo, e a razão dessa escolha está na §5. Quem consome a API é o
+sistema de manutenção, além de qualquer cliente HTTP externo.
 
 O empacotamento em container, as variáveis de ambiente e as limitações
 conhecidas dessa configuração estão em [`DEPLOY.md`](DEPLOY.md).
