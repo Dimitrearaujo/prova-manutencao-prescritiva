@@ -19,3 +19,4 @@ data/knowledge/
 *.joblib
 
 .env
+.claude/
