@@ -165,9 +165,21 @@ As duas medidas continuam publicadas, porque medem coisas diferentes: `confianca
 perto**; `consenso_simples` e `votos` dizem **quantos concordam**. É a segunda que
 sustenta a palavra "consenso". `scripts/demo.py` imprime as duas lado a lado, na
 forma crua que um técnico consegue interpretar — "22 de 25 vizinhos (88%) | peso
-88%". **O painel Streamlit ainda não faz isso**: ele exibe só a fração de peso, sob
-um rótulo que promete consenso. É dívida conhecida desta entrega, anotada aqui em
-vez de omitida.
+88%".
+
+**O painel exibia a medida errada, e isso foi corrigido.** O cartão "Consenso dos
+vizinhos" mostrava a fração de peso, e o texto de ajuda enunciava o limiar de 45%
+sobre ela — ou seja, a tela afirmava uma regra de decisão que o motor não
+implementa. Como as duas grandezas cruzam o limiar em parte dos eventos, a tela
+chegava a se contradizer sozinha: em 300 eventos sorteados do histórico (semente
+42), **6 produziam tela contraditória**. O evento `id=7495` é aceito com peso
+44,4% e voto simples 48,0%, e a legenda imprimia "consenso de 44% acima do mínimo
+de 45%: o padrão foi aceito"; os outros cinco são recusados exibindo 45–46% no
+cartão enquanto o motivo logo abaixo dizia "o rótulo mais votado aparece em 11 dos
+25 vizinhos (44%), abaixo do mínimo de 45%". Hoje o cartão mostra o voto simples —
+a mesma grandeza que o portão lê — e o peso ficou no texto de ajuda, nomeado pelo
+que é. **Nenhum diagnóstico mudou**: o portão sempre leu `consenso_simples`, e o
+defeito era exclusivamente de apresentação.
 
 **Qual dos dois portões faz o trabalho.** Medido na partição temporal, em 399
 eventos: 125 rejeitados, sendo **6 pela distância e 119 pelo consenso**. O portão
@@ -435,7 +447,7 @@ incoerente com a própria premissa de segmentação. `cadastro.chave_acesso`
 por padrão: nenhuma instalação nova, nem a do avaliador rodando isto pela
 primeira vez, fica travada de saída. Configurada, ela é exigida pelas duas
 portas — `X-Prescritiva-Key` na API, o mesmo campo no painel — porque as duas
-chamam a mesma `cadastrar_documento()` (§5), e uma proteção que valesse só num
+chamam a mesma `cadastrar_documento()` (§6), e uma proteção que valesse só num
 dos dois caminhos seria a porta dos fundos aberta.
 
 ## 4. Implantação em ambiente industrial
@@ -541,7 +553,96 @@ o índice precisa ser reconstruído. A avaliação por campanha
 próprio conjunto de dados fornecido — a rejeição sobe de 33,5% para 42,5% —, o que
 torna esse monitoramento uma necessidade demonstrada, não uma precaução teórica.
 
-## 5. Organização do código
+## 5. O painel: o que cada tela mostra
+
+```bash
+streamlit run app/streamlit_app.py     # http://localhost:8501
+```
+
+O painel **importa o motor em processo e não passa pela API**. A escolha é
+deliberada: a tela é a demonstração do pipeline, e um erro de rede no meio de uma
+apresentação esconderia o que ela existe para mostrar. A consequência é que ele
+exige os artefatos já construídos — sem eles a tela não sobe pela metade, ela
+informa a ordem exata dos três scripts (`ingest`, `build_index`,
+`build_knowledge`). A barra lateral declara qual gerador de texto está em uso e,
+quando o Ollama não respondeu, escreve que as instruções virão recortadas do
+procedimento em vez de reescritas (§3.8) — a degradação é visível, nunca
+silenciosa.
+
+São quatro abas, nomeadas na tela como `Dados`, `Diagnostico`, `Procedimentos` e
+`Avaliacao`.
+
+### `Dados` — o que o histórico contém
+
+Quatro indicadores no topo (eventos, defeitos distintos, procedimentos
+cadastrados, período coberto), a contagem de registros por rótulo separando
+defeito de condição de operação, e a distribuição por regime de rotação.
+
+Abaixo, o gráfico de **janela de gravação de cada rótulo** — é ele que sustenta,
+visualmente, a rejeição da partição aleatória: os registros de um mesmo rótulo se
+concentram em blocos contínuos, e sortear coloca a mesma medição dos dois lados
+(§3.5). Fecha com a **cobertura documental**: para cada defeito do catálogo, se
+existe procedimento, qual é e com que aderência. Os defeitos sem cobertura são
+somados num aviso — quantos são, quantos registros representam e que fração do
+histórico —, porque é essa fatia que vai receber a recusa com pedido de cadastro
+em vez de instrução.
+
+### `Diagnostico` — um evento novo, do zero ao procedimento
+
+Dois modos de entrada:
+
+- **Sortear do histórico**, opcionalmente filtrando por rótulo real. O rótulo
+  anotado pelo operador aparece na tela **apenas como gabarito de conferência** —
+  ele é removido do evento antes de chegar ao motor, e o próprio registro mais a
+  vizinhança de 300 s saem do índice na busca (§3.5). É o modo que roda contra o
+  mesmo sistema que foi medido.
+- **Colar JSON**, no formato do `banner.csv`. É o caminho para o avaliador testar
+  um evento que não existe no histórico. JSON malformado e campo obrigatório
+  ausente viram mensagem nomeando o problema, não traceback.
+
+O resultado sai nesta ordem:
+
+| Elemento | O que mostra |
+|---|---|
+| Tarja colorida | O desfecho, escrito por extenso. São os quatro da §2, cada um com cor própria — vermelho para defeito documentado, âmbar para defeito sem procedimento, cinza para padrão não reconhecido, verde para condição de operação. |
+| `Padrao identificado` | O rótulo que os vizinhos carregam. A ajuda registra que ele não vem de classificador treinado. |
+| `Consenso dos vizinhos` | A **fração simples** de vizinhos que carregam esse rótulo — a mesma grandeza sobre a qual o portão decide (§3.4). O peso somado fica no texto de ajuda, nomeado pelo que é. |
+| `Regime de rotacao` | O regime contra o qual a comparação foi feita. Rotação fora da grade mostra `sem regime comparavel`, não o token interno. |
+| Legenda de encaixe | Aparece **só** quando `regime_aproximado` é verdadeiro: a rotação caiu num regime conhecido sem ser o valor exato dele. Diz o rpm medido e contra qual regime a busca rodou (§3.2). |
+| Mensagem do motor | O mesmo texto que a API e a fila MQTT devolvem. Quando o desfecho é defeito sem documentação, uma linha aponta onde cadastrar o procedimento. |
+| Histórico do padrão | Ocorrências registradas, média por dia **com registro** (não pelo período inteiro), dias cobertos, e a distribuição ao longo do tempo. |
+| Contexto operacional | Confronta o regime deste evento com a distribuição histórica do padrão. Quando o defeito nunca apareceu nessa rotação, ou aparece muito menos que no regime dominante, a caixa muda para alerta — e a barra do evento atual recebe hachura e sufixo no rótulo, porque cor sozinha não informa. |
+| Instruções de correção | O texto gerado, precedido da procedência: qual gerador escreveu e a partir de qual documento. |
+| Trechos usados | Expansor com cada trecho recuperado e sua aderência BM25, para conferir a instrução contra a fonte. |
+| Como a similaridade decidiu | Expansor com o peso por rótulo, a distância média, o limiar de rejeição daquele regime, a frase que declara qual portão aceitou ou recusou, e a tabela dos vizinhos com id, rótulo normalizado, rótulo bruto, data, rpm e distância. Rotação fora da grade não chega a consultar o índice: aqui ele explica isso em vez de mostrar um gráfico vazio. |
+
+### `Procedimentos` — a consulta livre e o cadastro
+
+A segunda forma de interação da Figura 01. A pergunta pode ser restrita a um
+procedimento pelo combo; a restrição **estreita** o que o catálogo aprovou e nunca
+cria aprovação (§3.9). Antes do texto da resposta vem a etiqueta do defeito a que
+ela pertence — quem escreve "já troquei o rolamento e continua" recebe o
+procedimento de rolamento e precisa ver isso escrito antes de ler as instruções.
+As fontes ficam num expansor; quando nenhum texto foi gerado, a tela diz qual
+situação produziu a recusa.
+
+O **cadastro de documento novo** mora aqui e chama a mesma `cadastrar_documento()`
+que `POST /documentos` (§6), com os mesmos quatro portões e a mesma chave de
+acesso quando configurada (§3.10). É o outro lado da recusa: o desfecho "defeito
+sem procedimento" tem conserto dentro da própria tela, e o mesmo evento passa a
+receber instrução depois da reindexação.
+
+### `Avaliacao` — o que foi medido
+
+Lê `data/index/avaliacao.json`, gravado por `scripts/evaluate.py` — a tela
+**não recalcula nada ao vivo**, e diz qual comando gerar se o arquivo não existir.
+Traz a tabela das partições com rejeição, acerto de rótulo, documento certo,
+desfecho correto e prescrição indevida, e o experimento de defeito inédito
+separando as duas saídas aceitáveis: rejeitar, ou errar o nome e ainda acertar o
+procedimento. Métrica ausente no JSON vira `-` com aviso de como regravá-lo, em
+vez de derrubar a tela.
+
+## 6. Organização do código
 
 ```
 src/prescritiva/

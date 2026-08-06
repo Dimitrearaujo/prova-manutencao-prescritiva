@@ -176,10 +176,14 @@ de qualquer um numa planta segmentada, e essa é uma decisão de arquitetura, n�
 um extra de segurança avulso. Detalhe completo em
 [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) §3.10.
 
-O painel Streamlit tem quatro abas — Dados, Diagnóstico, Procedimentos e
-Avaliação — e importa o motor em processo, sem passar pela API. O cadastro de
-documento novo mora na aba Procedimentos e passa pelas mesmas proteções do
-`POST /documentos`, incluindo a chave de acesso quando configurada.
+O painel Streamlit tem quatro abas — `Dados`, `Diagnostico`, `Procedimentos` e
+`Avaliacao` — e importa o motor em processo, sem passar pela API. A aba
+`Diagnostico` aceita um evento de dois jeitos: sorteado do histórico, com o rótulo
+do operador servindo de gabarito sem chegar ao motor, ou colado como JSON no
+formato do `banner.csv`. O cadastro de documento novo mora na aba `Procedimentos`
+e passa pelas mesmas proteções do `POST /documentos`, incluindo a chave de acesso
+quando configurada. O que cada campo da tela mostra está descrito em
+[`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) §5.
 
 ---
 
