@@ -358,7 +358,7 @@ resposta e **não** percebe que recebeu o procedimento de outro defeito.
 | configuração | vazou | calou | desviou |
 |---|---|---|---|
 | portão completo | 16/66 | 17/52 | 1/52 |
-| sem `termos_ambiguos` | 18/66 | 15/52 | 4/52 |
+| sem `termos_ambiguos` | 18/66 | 14/52 | 4/52 |
 | sem `termos_pergunta` | 21/66 | 22/52 | 2/52 |
 
 `termos_pergunta` é ganho puro: tirá-lo piora as três colunas. `termos_ambiguos`
