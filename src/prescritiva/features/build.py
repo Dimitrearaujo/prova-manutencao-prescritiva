@@ -74,4 +74,15 @@ def build_features(df: pd.DataFrame, colunas: tuple[str, ...] | None = None) -> 
     out.loc[parado, ["ordem_z", "ordem_x"]] = 0.0
 
     selecionadas = list(colunas if colunas is not None else FEATURE_COLUMNS)
-    return out[selecionadas].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+    # O saneamento troca inf e NaN por zero. O `replace` do pandas 2.2 rebaixa o
+    # dtype em silencio e avisa que vai parar de fazer isso; a consulta de evento
+    # unico chega aqui com coluna `object` (uma linha tirada com `.iloc[]` de um
+    # DataFrame de colunas mistas vira Series object), entao o rebaixamento e um
+    # caminho vivo, nao um caso de teste. Opta-se pelo comportamento futuro e o
+    # rebaixamento passa a ser explicito - saida identica, sem depender de algo
+    # que sera removido. `where(isfinite)` seria mais curto e esta ERRADO: levanta
+    # TypeError justamente em coluna object.
+    with pd.option_context("future.no_silent_downcasting", True):
+        saneada = out[selecionadas].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    return saneada.infer_objects(copy=False)
