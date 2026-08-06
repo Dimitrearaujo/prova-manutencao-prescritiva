@@ -12,6 +12,9 @@ dist/
 data/raw/
 data/processed/
 data/index/
+# Excecao: o resultado da avaliacao acompanha o repositorio para que a aba
+# "Avaliacao" do painel nao nasca vazia em quem so clona e roda.
+!data/index/avaliacao.json
 data/_doc1_pages/
 data/knowledge/
 *.db

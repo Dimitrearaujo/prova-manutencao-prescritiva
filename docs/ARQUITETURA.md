@@ -612,6 +612,9 @@ somados num aviso — quantos são, quantos registros representam e que fração
 histórico —, porque é essa fatia que vai receber a recusa com pedido de cadastro
 em vez de instrução.
 
+![Aba Dados: indicadores do histórico, janela de gravação por rótulo e cobertura
+documental, com o aviso dos defeitos sem procedimento](img/01-dados.png)
+
 ### `Diagnostico` — um evento novo, do zero ao procedimento
 
 Dois modos de entrada:
@@ -641,6 +644,21 @@ O resultado sai nesta ordem:
 | Trechos usados | Expansor com cada trecho recuperado e sua aderência BM25, para conferir a instrução contra a fonte. |
 | Como a similaridade decidiu | Expansor com o peso por rótulo, a distância média, o limiar de rejeição daquele regime, a frase que declara qual portão aceitou ou recusou, e a tabela dos vizinhos com id, rótulo normalizado, rótulo bruto, data, rpm e distância. Rotação fora da grade não chega a consultar o índice: aqui ele explica isso em vez de mostrar um gráfico vazio. |
 
+Os dois desfechos que definem o projeto, lado a lado. Primeiro o caso em que o
+defeito tem procedimento e o sistema instrui:
+
+![Desfecho defeito documentado: tarja vermelha, padrão identificado, consenso dos
+vizinhos e as instruções de correção com a procedência](img/02-diagnostico-documentado.png)
+
+E o caso que o enunciado cobra explicitamente — defeito identificado **sem**
+procedimento cadastrado. A mensagem cumpre as duas obrigações na mesma frase:
+reporta que não existe procedimento para aquele defeito **e** pede o cadastro de
+um documento orientativo:
+
+![Desfecho defeito sem documentação: tarja âmbar, a mensagem declarando que não
+existe procedimento cadastrado e pedindo que se cadastre um documento
+orientativo](img/03-diagnostico-sem-documentacao.png)
+
 ### `Procedimentos` — a consulta livre e o cadastro
 
 A segunda forma de interação da Figura 01. A pergunta pode ser restrita a um
@@ -657,15 +675,27 @@ acesso quando configurada (§3.10). É o outro lado da recusa: o desfecho "defei
 sem procedimento" tem conserto dentro da própria tela, e o mesmo evento passa a
 receber instrução depois da reindexação.
 
+![Aba Procedimentos: o chat de consulta livre à base documental e o cadastro de
+documento novo, as duas formas de interação da Figura 01](img/04-procedimentos-chat.png)
+
 ### `Avaliacao` — o que foi medido
 
-Lê `data/index/avaliacao.json`, gravado por `scripts/evaluate.py` — a tela
-**não recalcula nada ao vivo**, e diz qual comando gerar se o arquivo não existir.
+Lê `data/index/avaliacao.json`, gravado por `scripts/evaluate.py` e **versionado
+junto com o repositório** para que a aba não nasça vazia — a tela **não recalcula
+nada ao vivo**, e diz qual comando gerar se o arquivo não existir.
 Traz a tabela das partições com rejeição, acerto de rótulo, documento certo,
 desfecho correto e prescrição indevida, e o experimento de defeito inédito
 separando as duas saídas aceitáveis: rejeitar, ou errar o nome e ainda acertar o
 procedimento. Métrica ausente no JSON vira `-` com aviso de como regravá-lo, em
 vez de derrubar a tela.
+
+![Aba Avaliacao: a tabela das partições com rejeição, acerto de rótulo, documento
+certo, desfecho correto e prescrição indevida](img/05-avaliacao.png)
+
+> As cinco telas acima foram capturadas da execução real do painel neste commit,
+> com os artefatos construídos a partir do `banner.csv` do enunciado. O
+> `data/index/avaliacao.json` que alimenta a última acompanha o repositório, para
+> que a aba não nasça vazia em nenhuma instalação.
 
 ## 6. Organização do código
 

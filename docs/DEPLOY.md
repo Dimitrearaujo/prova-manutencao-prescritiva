@@ -73,7 +73,7 @@ A imagem **não contém os artefatos de índice**. Ela sobe vazia e a API respon
 | `data/index/base_conhecimento.json` | `scripts/build_knowledge.py` | trechos e escopo dos procedimentos |
 | `data/knowledge/*.json` | `scripts/build_knowledge.py` | cache do OCR (o Doc1 é escaneado e custa ~25 s por página) |
 | `data/docs/*.pdf` | fornecidos com o desafio | os procedimentos em si |
-| `data/index/avaliacao.json` | `scripts/evaluate.py` | aba "Avaliação" do painel (opcional) |
+| `data/index/avaliacao.json` | `scripts/evaluate.py` — **já versionado**, não precisa gerar | aba "Avaliação" do painel |
 
 Ou seja, na primeira vez, **no host**, com o venv do projeto:
 
