@@ -2,15 +2,19 @@
 
 ## 1. O problema, reformulado
 
-O enunciado pede manutenção prescritiva com uma restrição que define todo o
-desenho: a solução **não deve depender da classificação prévia de falhas
-conhecidas**. Deve identificar padrões semelhantes dentro do histórico e
-recuperar o conhecimento que ensina a corrigir.
+O enunciado formula a solução como uma que **não depende necessariamente da
+classificação prévia de falhas conhecidas**, mas sim da identificação de padrões
+similares dentro do histórico operacional. Adotei isso como restrição dura de
+projeto, e é ela que define todo o desenho: identificar o padrão semelhante
+dentro do histórico e recuperar o conhecimento que ensina a corrigir.
 
 Isso descarta a solução óbvia. Um classificador supervisionado treinado com
 `fault` como alvo aprende um conjunto fechado de classes e, diante de um defeito
 novo, devolve com confiança a classe conhecida menos errada. É exatamente o
-comportamento que o enunciado proíbe.
+comportamento que o enunciado proíbe: "O sistema deve se deter unicamente a
+problemas que possuem documentos, caso contrário deve reportar que ainda não
+existe o problema identificado". Um conjunto fechado nunca consegue emitir esse
+reporte.
 
 O desenho adotado inverte a ordem: **o histórico é o modelo**. Um evento novo é
 comparado ao passado, os vizinhos encontrados trazem seus próprios rótulos, e o
@@ -188,7 +192,7 @@ percentil de distância é o secundário. Isso importa porque a propriedade que
 define o projeto (conjunto aberto, taxa de rejeição como alarme de deriva)
 repousa quase toda sobre o `min_consensus: 0.45`, e esse valor **não tem
 varredura de sensibilidade** em lugar nenhum do repositório. É a lacuna
-metodológica declarada em `RESULTADOS.md` §6.
+metodológica declarada em `RESULTADOS.md` §7.
 
 ### 3.5 Exclusão da vizinhança temporal, não só do próprio id
 
@@ -427,11 +431,13 @@ pelos três e entraria na base sem nunca poder cobrir defeito nenhum —
 nada. Esse documento apareceria em `documentos: N` e nunca em cobertura, o que
 é pior que recusar: parece cadastrado.
 
-**O quarto portão exige um mínimo de caracteres extraídos por página**, o
-mesmo limiar (`min_chars_por_pagina`, hoje 40) que `knowledge/extract.py` usa
-para decidir se um PDF tem camada de texto nativa útil ou precisa de OCR — um
-documento que já não passa nesse mínimo também não teria texto de sobra depois
-do OCR.
+**O quarto portão exige um mínimo de caracteres extraídos por página**
+(`cadastro.min_chars_por_pagina`, hoje 40) — o mesmo valor que
+`knowledge/extract.py` usa por padrão para decidir se um PDF tem camada de texto
+nativa útil ou precisa de OCR, e a razão é a mesma: um documento que já não passa
+nesse mínimo também não teria texto de sobra depois do OCR. São duas constantes
+independentes que hoje coincidem, não uma só lida nos dois lugares — o extrator
+carrega a sua (`_MIN_CHARS_PER_PAGE`) e não lê configuração.
 
 **Os quatro portões rodam inteiros dentro de uma área temporária**, e nada é
 publicado antes do último passar: só então o PDF é copiado para `data/docs/` e o
@@ -452,20 +458,20 @@ cadastro existe para servir.
 trava a regressão. Promover o cache junto com o PDF, em vez de descartá-lo com a
 área temporária, é o que evita pagar o OCR do documento duas vezes.
 
-**A chave de acesso é o quinto, e é sobre quem, não sobre o quê.** O enunciado
-não pede autenticação em lugar nenhum, e por isso ela não é apresentada como
-"mais segurança" — é apresentada como consequência de uma afirmação que a
-própria arquitetura já faz: a solução roda numa planta segmentada (§4), com o
-sensor de um lado publicando e o técnico do outro consultando. Se o cadastro
-de documento reescreve o procedimento que aquele técnico vai seguir, ele não
-pode ser ação de qualquer um que alcance a porta HTTP ou o painel — seria
-incoerente com a própria premissa de segmentação. `cadastro.chave_acesso`
-(sobrescrita por `PRESCRITIVA_CADASTRO_KEY`, nunca versionada) vem desligada
-por padrão: nenhuma instalação nova, nem a do avaliador rodando isto pela
-primeira vez, fica travada de saída. Configurada, ela é exigida pelas duas
-portas — `X-Prescritiva-Key` na API, o mesmo campo no painel — porque as duas
-chamam a mesma `cadastrar_documento()` (§6), e uma proteção que valesse só num
-dos dois caminhos seria a porta dos fundos aberta.
+**A chave de acesso é de outra natureza, e é sobre quem, não sobre o quê.** O
+enunciado não pede autenticação em lugar nenhum, e por isso ela não é
+apresentada como "mais segurança" — é apresentada como consequência de uma
+afirmação que a própria arquitetura já faz: a solução roda numa planta
+segmentada (§4), com o sensor de um lado publicando e o técnico do outro
+consultando. Se o cadastro de documento reescreve o procedimento que aquele
+técnico vai seguir, ele não pode ser ação de qualquer um que alcance a porta
+HTTP ou o painel — seria incoerente com a própria premissa de segmentação.
+`cadastro.chave_acesso` (sobrescrita por `PRESCRITIVA_CADASTRO_KEY`, nunca
+versionada) vem desligada por padrão: nenhuma instalação nova, nem a do
+avaliador rodando isto pela primeira vez, fica travada de saída. Configurada,
+ela é exigida pelas duas portas — `X-Prescritiva-Key` na API, o mesmo campo no
+painel — porque as duas chamam a mesma `cadastrar_documento()` (§6), e uma
+proteção que valesse só num dos dois caminhos seria a porta dos fundos aberta.
 
 ## 4. Implantação em ambiente industrial
 

@@ -9,7 +9,7 @@ Cada número aqui declara de onde vem.
 | `python scripts/eda.py` | a sobreposição de blocos da seção 1 e os números de deriva na leitura da seção 2 (hipótese H5) |
 | `pytest tests/test_cobertura.py` | seção 5 |
 
-A tabela antes/depois da seção 1 e a atribuição de rejeição por portão da seção 6
+A tabela antes/depois da seção 1 e a atribuição de rejeição por portão da seção 7
 não saem de nenhum script versionado: foram medidas à parte sobre os artefatos
 entregues, consultando `IndiceSimilaridade` com e sem os parâmetros novos, e o
 procedimento está descrito no ponto em que cada uma aparece.
@@ -322,8 +322,10 @@ controle, e **13 ficaram ambíguas** a ponto de nenhum engenheiro decidir sem
 espectro ou medição de entreferro, e foram excluídas dos dois denominadores.
 Reportar contra o corpus bruto teria errado nos dois sentidos.
 
-Restam **66 ataques** (o sistema tem de recusar) e **52 controles** (o sistema tem
-de responder, e pelo procedimento certo). Corpus em
+Restam **66 ataques** (o sistema tem de recusar). Os **52 controles** (o sistema
+tem de responder, e pelo procedimento certo) são essas 22 reclassificadas mais 30
+perguntas de manutenção bem formadas, que não vieram da geração adversarial.
+Corpus em
 `tests/dados/corpus_chat_adversarial.json`; `python scripts/auditoria_chat.py`
 refaz a conta em segundos, com um dublê no lugar do modelo.
 

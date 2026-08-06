@@ -29,8 +29,10 @@ Quatro desfechos possíveis, e três deles **não** prescrevem nada:
 
 ## A decisão que define o projeto
 
-O enunciado é explícito: a solução **não deve depender da classificação prévia de
-falhas conhecidas**. Isso descarta o caminho óbvio.
+O enunciado formula a solução como uma que **não depende necessariamente da
+classificação prévia de falhas conhecidas**, mas sim da identificação de padrões
+similares dentro do histórico operacional. Tratei isso como restrição dura de
+projeto, não como preferência. Isso descarta o caminho óbvio.
 
 Um classificador supervisionado treinado com `fault` como alvo aprende um
 conjunto fechado de classes. Diante de um defeito que nunca viu, ele não tem como
@@ -176,13 +178,14 @@ de qualquer um numa planta segmentada, e essa é uma decisão de arquitetura, n�
 um extra de segurança avulso. Detalhe completo em
 [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) §3.10.
 
-O painel Streamlit tem quatro abas — `Dados`, `Diagnostico`, `Procedimentos` e
-`Avaliacao` — e importa o motor em processo, sem passar pela API. A aba
-`Diagnostico` aceita um evento de dois jeitos: sorteado do histórico, com o rótulo
-do operador servindo de gabarito sem chegar ao motor, ou colado como JSON no
-formato do `banner.csv`. O cadastro de documento novo mora na aba `Procedimentos`
-e passa pelas mesmas proteções do `POST /documentos`, incluindo a chave de acesso
-quando configurada. O que cada campo da tela mostra está descrito em
+O painel Streamlit tem quatro abas — `Dados`, `Diagnostico`, `Procedimentos`
+(onde ficam o chat e o cadastro de documento) e `Avaliacao` — e importa o motor
+em processo, sem passar pela API. A aba `Diagnostico` aceita um evento de dois
+jeitos: sorteado do histórico, com o rótulo do operador servindo de gabarito sem
+chegar ao motor, ou colado como JSON no formato do `banner.csv`. O cadastro de
+documento novo mora na aba `Procedimentos` e passa pelas mesmas proteções do
+`POST /documentos`, incluindo a chave de acesso quando configurada. O que cada
+campo da tela mostra está descrito em
 [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) §5.
 
 ---
@@ -329,9 +332,10 @@ não no fio da navalha: a menor aderência coberta é 2,14 e a maior rejeitada �
 
 A tabela acima parte do defeito. O chat parte da frase que o técnico digitou, e é
 aí que a regra é mais fácil de contornar. Uma auditoria adversarial de 101
-perguntas — depois curadas em 66 ataques, 52 controles e 13 ambíguas — mediu o
-portão anterior deixando passar **paráfrase (12/46), o combo de restringir
-procedimento na tela (22/23) e a citação de um defeito coberto junto (32/32)**.
+perguntas — depois curadas em 66 ataques, 22 reclassificadas como controle e 13
+ambíguas — mediu o portão anterior deixando passar **paráfrase (12/46), o combo
+de restringir procedimento na tela (22/23) e a citação de um defeito coberto
+junto (32/32)**.
 
 O portão foi refeito sobre uma frase:
 

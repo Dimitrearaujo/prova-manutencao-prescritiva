@@ -66,6 +66,7 @@ A imagem **não contém os artefatos de índice**. Ela sobe vazia e a API respon
 
 | Caminho no host | Gerado por | Para que serve |
 |---|---|---|
+| `data/raw/banner.csv` | fornecido com o desafio — **não vem no repositório nem no .zip**, copie antes de tudo | entrada de `scripts/ingest.py`; sem ele o primeiro comando abaixo falha com `FileNotFoundError` |
 | `data/prescritiva.db` | `scripts/ingest.py` | histórico consultado para contagem, frequência e distribuição no tempo |
 | `data/processed/eventos.parquet` | `scripts/ingest.py` | base das telas do painel |
 | `data/index/indice_similaridade.joblib` | `scripts/build_index.py` | índice de vizinhos por regime de rotação |
