@@ -56,14 +56,31 @@ O detalhamento das decisões está em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.m
 
 ## Como executar
 
-Requer Python 3.11+. Os seis PDFs de procedimento estão versionados em
-`data/docs/`; o `banner.csv` não está — copie-o da pasta do enunciado para
-`data/raw/banner.csv`.
+Requer Python 3.11 ou 3.12 (a imagem Docker usa 3.12). Em 3.13+ a instalação não
+resolve: `rapidocr-onnxruntime` 1.3.24 declara `Requires-Python <3.13` e `numpy`
+1.26.4 não publica wheel para cp313.
+
+Os seis PDFs de procedimento estão versionados em `data/docs/`; o `banner.csv` não
+está — copie-o da pasta do enunciado para `data/raw/banner.csv`.
+
+Windows (PowerShell):
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -e .
+```
+
+Linux/Mac:
 
 ```bash
-python -m venv .venv && .venv/Scripts/activate     # Linux/Mac: source .venv/bin/activate
+python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt && pip install -e .
 ```
+
+No Windows, use `.venv\Scripts\python.exe` no lugar de `python` nos comandos
+abaixo — os blocos seguintes supõem a venv ativa, e a forma sem ativação evita
+depender da `ExecutionPolicy` do PowerShell.
 
 Construção dos artefatos, nesta ordem:
 
