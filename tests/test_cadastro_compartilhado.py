@@ -204,6 +204,35 @@ def test_pdf_sem_conteudo_util_e_recusado_sem_entrar_na_base(settings_isolados):
     assert list(settings_isolados.paths.knowledge_dir.glob("*.json")) == []
 
 
+def test_recusa_nao_destroi_documento_bom_de_mesmo_nome(settings_isolados):
+    """Uma tentativa recusada nao pode levar embora a versao boa anterior.
+
+    E o caminho normal de quem tenta corrigir um documento e erra o arquivo:
+    reenviar o mesmo nome e justamente o fluxo que este cadastro existe para
+    servir. Antes, `copyfile` para docs_dir acontecia antes do quarto portao e
+    sobrescrevia o documento bom; o rollback entao apagava os dois artefatos
+    sem saber que um deles ja estava la, e a base servida seguia anunciando um
+    PDF que nao existia mais no disco ate a reindexacao seguinte.
+    """
+    cadastrar_documento(
+        _bytes_io("Doc9.pdf", pdf_valido("Procedimento Bom")), "Doc9.pdf", settings_isolados
+    )
+    pdf_bom = settings_isolados.paths.docs_dir / "Doc9.pdf"
+    cache_bom = settings_isolados.paths.knowledge_dir / "Doc9.json"
+    bytes_antes = pdf_bom.read_bytes()
+
+    with pytest.raises(CadastroInvalido):
+        cadastrar_documento(
+            _bytes_io("Doc9.pdf", pdf_quase_vazio()), "Doc9.pdf", settings_isolados
+        )
+
+    assert pdf_bom.exists(), "a tentativa recusada apagou o documento bom"
+    assert pdf_bom.read_bytes() == bytes_antes, "o documento bom foi sobrescrito"
+    assert cache_bom.exists(), "a tentativa recusada apagou o cache do documento bom"
+    extraidos = extract_all(settings_isolados.paths.docs_dir, settings_isolados.paths.knowledge_dir)
+    assert "Procedimento Bom" in extraidos[0].texto
+
+
 def _pdf_com_texto_curto(texto: str) -> bytes:
     documento = fitz.open()
     pagina = documento.new_page()

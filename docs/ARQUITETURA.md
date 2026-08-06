@@ -431,9 +431,26 @@ nada. Esse documento apareceria em `documentos: N` e nunca em cobertura, o que
 mesmo limiar (`min_chars_por_pagina`, hoje 40) que `knowledge/extract.py` usa
 para decidir se um PDF tem camada de texto nativa útil ou precisa de OCR — um
 documento que já não passa nesse mínimo também não teria texto de sobra depois
-do OCR. Falhar aqui remove o PDF recém-copiado e o cache de extração que a
-checagem já havia gerado, para que o cadastro fique exatamente como antes da
-tentativa.
+do OCR.
+
+**Os quatro portões rodam inteiros dentro de uma área temporária**, e nada é
+publicado antes do último passar: só então o PDF é copiado para `data/docs/` e o
+cache de extração é promovido para junto dele. Falhar em qualquer um deixa o
+cadastro exatamente como antes da tentativa, e não há rollback a escrever — a
+área temporária desaparece levando junto tudo o que a tentativa criou.
+
+Essa ordem custou um defeito para ficar assim. Enquanto a cópia para `data/docs/`
+acontecia antes do quarto portão, um envio recusado com o nome de um documento já
+cadastrado **sobrescrevia o arquivo bom, e o rollback o apagava junto** — ele não
+tinha como distinguir o que aquela tentativa criou do que já estava lá. Pior: como
+a exceção sobe antes de `base.salvar()`, o índice servido continuava anunciando o
+documento e cobrindo o defeito, apontando para um PDF que não existia mais no
+disco, até a reindexação seguinte derrubá-lo em silêncio. E o caso não era de
+borda: reenviar um PDF corrigido com o mesmo nome é exatamente o fluxo que este
+cadastro existe para servir.
+`tests/test_cadastro_compartilhado.py::test_recusa_nao_destroi_documento_bom_de_mesmo_nome`
+trava a regressão. Promover o cache junto com o PDF, em vez de descartá-lo com a
+área temporária, é o que evita pagar o OCR do documento duas vezes.
 
 **A chave de acesso é o quinto, e é sobre quem, não sobre o quê.** O enunciado
 não pede autenticação em lugar nenhum, e por isso ela não é apresentada como

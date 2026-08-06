@@ -146,9 +146,7 @@ def _exigir_chave_valida(chave_apresentada: str | None, settings: Settings) -> N
         raise CadastroInvalido("Chave de acesso ausente ou invalida.", status_code=401)
 
 
-def _exigir_conteudo_suficiente(
-    extraido: ExtractedDocument, docs_dir: Path, cache_dir: Path, settings: Settings
-) -> None:
+def _exigir_conteudo_suficiente(extraido: ExtractedDocument, settings: Settings) -> None:
     """Recusa um PDF que abre mas nao rendeu texto o bastante para virar procedimento.
 
     `_exigir_pdf_legivel` so confere que o arquivo abre e tem paginas - um PDF
@@ -161,14 +159,15 @@ def _exigir_conteudo_suficiente(
     Mesmo minimo por pagina que decide, em `knowledge/extract.py`, se o
     documento tem camada de texto nativa util ou precisa de OCR: um PDF que ja
     nao passa nesse minimo tambem nao teria texto de sobra depois do OCR.
+
+    Nao desfaz nada: quando esta checagem roda, nada foi publicado ainda. O
+    unico rollback e a area temporaria de `cadastrar_documento` desaparecendo.
     """
     minimo_por_pagina = settings.cadastro.get("min_chars_por_pagina", 40)
     minimo = minimo_por_pagina * extraido.paginas
     tamanho = len(extraido.texto.strip())
     if tamanho >= minimo:
         return
-    docs_dir.joinpath(extraido.arquivo).unlink(missing_ok=True)
-    cache_dir.joinpath(f"{extraido.nome}.json").unlink(missing_ok=True)
     raise CadastroInvalido(
         f"O texto extraido tem {tamanho} caracteres para {extraido.paginas} pagina(s) - "
         f"abaixo do minimo de {minimo} para sustentar um procedimento consultavel. Confira "
@@ -194,31 +193,44 @@ def cadastrar_documento(
     docs_dir.mkdir(parents=True, exist_ok=True)
     nome = nome_seguro(filename, docs_dir)
 
-    # O arquivo so entra em docs_dir depois de validado: docs_dir e varrido por
-    # glob a cada reindexacao, entao gravar antes de conferir e o que tornava um
-    # unico envio ruim capaz de derrubar o cadastro em definitivo.
+    cache_dir = settings.paths.knowledge_dir
+    cfg = settings.knowledge
+    stem = Path(nome).stem
+
+    # Os quatro portoes rodam inteiros dentro da area temporaria, e nada e
+    # publicado antes do ultimo passar. Dois motivos, e o segundo custou um bug:
+    # docs_dir e varrido por glob a cada reindexacao, entao gravar antes de
+    # conferir tornava um unico envio ruim capaz de derrubar o cadastro em
+    # definitivo; e `copyfile` para docs_dir SOBRESCREVE um documento bom de
+    # mesmo nome, sem que rollback nenhum consiga depois distinguir o arquivo
+    # que esta tentativa criou daquele que ja estava la. Reenviar um PDF
+    # corrigido com o mesmo nome e o fluxo que este cadastro existe para servir:
+    # uma tentativa recusada nao pode apagar a versao boa anterior.
     with tempfile.TemporaryDirectory() as area:
         provisorio = Path(area) / nome
+        cache_provisorio = Path(area) / "cache"
         _gravar_em_blocos(arquivo, provisorio)
         _exigir_pdf_legivel(provisorio)
+        # Extrai o documento novo sozinho primeiro, e nao dentro do lote: e a
+        # unica chamada que precisa do resultado individual para o portao de
+        # conteudo. O cache sai na area temporaria e sobe junto com o PDF -
+        # `extract_document` chaveia o cache so pelo nome do arquivo, entao o
+        # JSON extraido do provisorio e o mesmo que sairia de docs_dir, e o
+        # extract_all() do lote o reaproveita em vez de pagar o OCR de
+        # ~25s/pagina uma segunda vez.
+        extraido = extract_document(
+            provisorio, cache_provisorio, dpi=cfg["ocr_dpi"], min_confidence=cfg["ocr_min_confidence"]
+        )
+        _exigir_conteudo_suficiente(extraido, settings)
+
+        # Passou nos quatro: publica os dois artefatos. O cache antigo de mesmo
+        # nome e substituido aqui, e nao antes - sem substituir, reenviar o
+        # mesmo nome com o conteudo corrigido devolveria o texto velho, que e o
+        # oposto do que este cadastro existe para resolver; substituindo antes,
+        # uma recusa levava embora o cache do documento bom.
+        cache_dir.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(provisorio, docs_dir / nome)
-
-    # O cache de extracao e indexado por nome de arquivo. Sem invalidar, reenviar
-    # o mesmo nome com o conteudo corrigido devolve o texto antigo: o cadastro
-    # responde sucesso e o sistema segue prescrevendo pela versao errada, que e
-    # o oposto do que este cadastro existe para resolver.
-    cache_dir = settings.paths.knowledge_dir
-    cache_dir.joinpath(f"{Path(nome).stem}.json").unlink(missing_ok=True)
-
-    cfg = settings.knowledge
-    # Extrai o documento novo sozinho primeiro, e nao dentro do lote: e a unica
-    # chamada que precisa do resultado individual para o portao de conteudo, e
-    # ela ja escreve o cache que o extract_all() do lote reaproveita - sem isto
-    # o documento seria extraido (e o OCR de ~25s/pagina pago) duas vezes.
-    extraido = extract_document(
-        docs_dir / nome, cache_dir, dpi=cfg["ocr_dpi"], min_confidence=cfg["ocr_min_confidence"]
-    )
-    _exigir_conteudo_suficiente(extraido, docs_dir, cache_dir, settings)
+        shutil.copyfile(cache_provisorio / f"{stem}.json", cache_dir / f"{stem}.json")
 
     extraidos = extract_all(docs_dir, cache_dir, dpi=cfg["ocr_dpi"], min_confidence=cfg["ocr_min_confidence"])
     base = BaseConhecimento(
