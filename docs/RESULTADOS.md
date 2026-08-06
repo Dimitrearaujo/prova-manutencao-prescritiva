@@ -346,12 +346,14 @@ momento; o que se compara entre elas é o mecanismo, não a fração.*
 | | |
 |---|---|
 | vazamento | 16/66 — todos de co-citação |
-| mudez, pergunta bem formada | **1/30** |
-| mudez, pergunta só de sintoma | 17/22 |
-| desvio (respondeu pelo procedimento errado) | 1/52 |
+| controle não atendido, pergunta bem formada | **1/30** |
+| controle não atendido, pergunta só de sintoma | 17/22 |
+| dos 18 acima, desvio (respondeu pelo procedimento errado) | 1 |
 
-Mudez e desvio saem separados de propósito: o técnico percebe que ficou sem
-resposta e **não** percebe que recebeu o procedimento de outro defeito.
+Os **18 controles não atendidos** (1/30 + 17/22) se repartem em **17 recusas** — o
+`calou 17/52` da ablação logo abaixo — e **1 desvio**. A distinção importa e por
+isso o desvio não é somado à parte: o técnico percebe que ficou sem resposta e
+**não** percebe que recebeu o procedimento de outro defeito.
 
 ### Ablação do portão
 
@@ -387,10 +389,13 @@ catraca em `tests/test_auditoria_portao.py`, que falha se piorar.
 ### A mudez de sintoma não é falha do portão
 
 17 dos 22 controles reclassificados descrevem **só o sintoma**, sem nomear defeito:
-*"o motor treme na frequência de giro e o ronco sobe e desce"*. O chat recusa e
-pede o nome do defeito. É o comportamento pretendido: transformar sintoma em
-defeito é trabalho do **caminho do diagnóstico**, que tem o sensor. No chat não há
-sensor, e foi medido nesta mesma seção que a semelhança de palavras não decide.
+*"o motor treme na frequência de giro e o ronco sobe e desce"*. O chat recusa — e a
+recusa não é sempre a mesma: das 17 medidas, **6 pedem o nome do defeito**, **8
+pedem o componente** porque o fenômeno é ambíguo e **3 informam que o defeito
+descrito não tem procedimento cadastrado**. É o comportamento pretendido:
+transformar sintoma em defeito é trabalho do **caminho do diagnóstico**, que tem
+o sensor. No chat não há sensor, e foi medido nesta mesma seção que a semelhança
+de palavras não decide.
 
 ---
 

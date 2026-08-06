@@ -1,8 +1,9 @@
 """Busca por similaridade no historico operacional.
 
-O enunciado e explicito: a solucao nao deve depender de classificacao previa de
-falhas conhecidas, e sim identificar padroes semelhantes dentro do historico.
-Por isso aqui nao existe classificador treinado com rotulo como alvo. Existe um
+O enunciado formula a solucao como uma que nao depende necessariamente de
+classificacao previa de falhas conhecidas, e sim da identificacao de padroes
+similares dentro do historico operacional. Tratei isso como restricao dura de
+projeto, e por isso aqui nao existe classificador treinado com rotulo como alvo. Existe um
 indice de vizinhos: o evento novo e comparado ao passado, os vizinhos trazem
 seus proprios rotulos, e o diagnostico e o consenso deles.
 
@@ -96,7 +97,7 @@ class IndiceSimilaridade:
             matriz = scaler.transform(features)
 
             vizinhos = min(self.n_neighbors, len(grupo))
-            # Forca bruta e a escolha certa aqui: em 25 dimensoes as arvores de
+            # Forca bruta e a escolha certa aqui: em 20 dimensoes as arvores de
             # particionamento degradam e ficam mais lentas que a varredura.
             indice = NearestNeighbors(
                 n_neighbors=vizinhos, metric="euclidean", algorithm="brute", n_jobs=-1

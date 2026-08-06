@@ -8,7 +8,7 @@ dist/
 .ipynb_checkpoints/
 
 # Dados brutos e artefatos derivados nao entram no repositorio.
-# Reproduza com: python -m scripts.01_ingest && python -m scripts.02_build_index
+# Reproduza com: python scripts/ingest.py && python scripts/build_index.py
 data/raw/
 data/processed/
 data/index/

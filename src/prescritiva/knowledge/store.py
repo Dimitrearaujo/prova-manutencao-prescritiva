@@ -104,7 +104,7 @@ class BaseConhecimento:
         return self
 
     def _reconstruir(self) -> None:
-        # BM25 sobre os 185 trechos funciona bem. Sobre os 6 documentos nao
+        # BM25 sobre os 170 trechos funciona bem. Sobre os 6 documentos nao
         # funcionaria: com corpus desse tamanho o IDF de um termo presente em
         # metade dos documentos zera, e "rolamento" desapareceria justamente do
         # documento de rolamentos. Por isso a cobertura usa regra propria.

@@ -439,11 +439,13 @@ nesse mínimo também não teria texto de sobra depois do OCR. São duas constan
 independentes que hoje coincidem, não uma só lida nos dois lugares — o extrator
 carrega a sua (`_MIN_CHARS_PER_PAGE`) e não lê configuração.
 
-**Os quatro portões rodam inteiros dentro de uma área temporária**, e nada é
-publicado antes do último passar: só então o PDF é copiado para `data/docs/` e o
-cache de extração é promovido para junto dele. Falhar em qualquer um deixa o
-cadastro exatamente como antes da tentativa, e não há rollback a escrever — a
-área temporária desaparece levando junto tudo o que a tentativa criou.
+**Nada é publicado antes do último portão passar.** `nome_seguro` só valida e
+deriva o nome, sem tocar em disco; a gravação e as três checagens sobre o arquivo
+acontecem dentro de uma área temporária, e só depois que a última passa o PDF é
+copiado para `data/docs/` e o cache de extração é promovido para junto dele.
+Falhar em qualquer um deixa o cadastro exatamente como antes da tentativa, e não
+há rollback a escrever — a área temporária desaparece levando junto tudo o que a
+tentativa criou.
 
 Essa ordem custou um defeito para ficar assim. Enquanto a cópia para `data/docs/`
 acontecia antes do quarto portão, um envio recusado com o nome de um documento já
@@ -509,7 +511,7 @@ flowchart LR
     API <--> BD
     API --> UI
     API --> CMMS
-    BUILD -.->|artefatos versionados| MEM
+    BUILD -.-> MEM
 ```
 
 O empacotamento em container, as variáveis de ambiente e as limitações
@@ -562,7 +564,7 @@ cobertura de um defeito diminuir é remover um PDF de `data/docs/` por fora da
 API — não existe endpoint de exclusão —, e mesmo nesse caso o registro antigo
 continua correto: ele descreve a decisão de quando foi emitido, não a
 capacidade do sistema hoje. Não há caminho, hoje, em que a leitura do
-histórico gere ou substitua uma prescrição nova sem passar pelos três portões.
+histórico gere ou substitua uma prescrição nova sem passar pelos quatro portões.
 
 **Ciclo de vida.** Novos eventos rotulados alimentam a reconstrução periódica do
 índice. Novos procedimentos entram pelo próprio painel ou por `POST /documentos`.
