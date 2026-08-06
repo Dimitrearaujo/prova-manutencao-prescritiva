@@ -209,7 +209,7 @@ casos que passam. A rejeição segura entre 37,7% e 59,3% deles; o restante pass
 com o procedimento de outro defeito.
 
 **O pior caso está em `polia`, que cai em `normal`.** Chamar defeito de condição
-normal é o erro mais caro que este sistema pode cometer, porque não gera nem ação
+normal é o pior desfecho quando o defeito é inédito, porque não gera nem ação
 nem alerta.
 
 **E o número mais desconfortável do projeto está nas duas linhas sem documento.**
